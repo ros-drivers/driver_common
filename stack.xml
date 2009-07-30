@@ -1,0 +1,25 @@
+<stack name="camera_drivers" version="0.1">
+  <description brief="Framework used by all drivers.">
+    
+    This stack contains a framework that will be used by all the driver
+    packages. Functionality includes:
+
+    - Classes for helping to publish consistent diagnostics (each topic
+    will publish certain diagnostics, each driver will publish certain
+    diagnostics, etc.), and to make diagnostics less tedious to write.
+
+    - Classes for helping to run self-tests and publish their results.
+
+    - A dynamic reconfiguration system to allow driver parameters to be
+    changed without taking down the driver, and to autogenerate parameter
+    documentation.
+
+    - A base class for sensors to provide a consistent state machine
+    (retries, error handling, etc.) and interface.
+
+  </description>
+  <author>Maintained by Blaise Gassend</author>
+  <review status="unreviewed" notes=""/>
+  <url>http://pr.willowgarage.com/wiki/driver_common</url>
+  <depend stack="ros" version="0.7"/>
+</stack>
