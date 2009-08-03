@@ -36,436 +36,229 @@
 #ifndef __DRIVER_BASE__DRIVER_H__
 #define __DRIVER_BASE__DRIVER_H__
 
-#include <diagnostic_updater/diagnostic_updater.h>
-#include <self_test/self_test.h>
-#include <ros/node_handle.h>
-#include <boost/thread.hpp>
-#include <boost/bind.hpp>
-
 namespace driver_base
 {
 
-class AbstractDriver
+/**
+ *
+ * State transition functions assume that they are called from the correct
+ * state. It is the caller's responsibility to check that the state is
+ * correct. The Driver mutex_ should always be locked by the caller before
+ * checking the current state and throughout the call to the transition function.
+ *
+ * State should not change between calls to the transition function except
+ * for transitions from RUNNING to STOPPED. The device must hold its lock
+ * while doing this transition to allow the caller to enforce that stop is
+ * only called from the RUNNING state.
+ *
+ * Transitions may fail. It is the caller's responsibility to check success
+ * by looking at the device's state_. After a failure, the device can set
+ * itself into any state. For example, if a call to start() fails, the
+ * device may end up in the CLOSED state.
+ *
+ */
+
+class Driver
 {
-  static int ctrl_c_hit_count_; 
-  
-  static void sigCalled(int sig)
-  {
-    ctrl_c_hit_count_++;
-  }
-};
-  
-template <class DriverType>
-int main(int argc, char **argv, std::string name)
-{
-  ros::init(argc, argv, name, ros::init_options::NoSigintHandler);
-  signal(SIGINT, &AbstractDriver::sigCalled);
-  signal(SIGTERM, &AbstractDriver::sigCalled);
-  ros::NodeHandle nh;
-  DriverType driver(nh);
-  return driver.spin();
-  /// @todo Add check for leaked file descriptors and such things here.
-}
-  
-template <class Device>
-class Driver : public AbstractDriver
-{
-public:
+public:  
   typedef char state_t;
- 
+
 protected:
-  // Hooks
-  virtual void add_diagnostics() {}
-  virtual void add_stopped_tests() {}
-  virtual void add_opened_tests() {}
-  virtual void add_running_tests() {};
-
-  // Helper classes
-  ros::NodeHandle node_handle_;
-  self_test::Dispatcher<Driver<Device> > self_test_;
-  diagnostic_updater::Updater diagnostic_;
-  typename Device::Reconfigurator reconfigurator_;
-  
-  Device device_;
-
-private:
-  // Subscriber tracking
-  int num_subscribed_topics_; // Number of topics that have subscribers.
-  
-  static const state_t DISABLED = 0;
-  static const state_t LAZY_ON = 1;
-  static const state_t ALWAYS_ON = 2;
-  static const state_t SELF_TEST = 3;
-  static const state_t EXITING = 4;
-
   state_t state_;
-                          
-  boost::shared_ptr<boost::thread> ros_thread_;
+
+  virtual void doOpen() = 0;
+  virtual void doClose() = 0;
+  virtual void doStart() = 0;
+  virtual void doStop() = 0;
+
+public:
+  virtual std::string getID() = 0;
   
-  int exit_status_;
+  boost::mutex mutex_; ///@todo should this be protected?
 
-  // The device
-  typedef typename Device::state_t dev_state_t;
+  static const state_t CLOSED = 0; // Not connected to the hardware.
+  static const state_t OPENED = 1; // Connected to the hardware, ready to start streaming.
+  static const state_t RUNNING = 2; // Streaming data.
 
-  dev_state_t pre_self_test_device_state_;
-
-  void reconfigure(int level)
+  bool goState(state_t target)
   {
-    boost::mutex::scoped_lock(device_.mutex_);
-    
-    dev_state_t orig_state = device_.getState();
-  
-    if ((level | dynamic_reconfigure::SensorLevels::RECONFIGURE_STOP) == level)
-    {
-      stop();
-      if (!is_stopped())
-        ROS_ERROR("Failed to stop streaming before reconfiguring. Reconfiguration may fail.");
-    }
-  
-    if ((level | dynamic_reconfigure::SensorLevels::RECONFIGURE_CLOSE) == level)
-    {
-      close();
-      if (!is_closed())
-        ROS_ERROR("Failed to close device before reconfiguring. Reconfiguration may fail.");
-    }
-  
-    reconfigurator_.get_config(device_.config_);
-    device_.config_update();
-    reconfigure_hook(level);
-    reconfigurator_.set_config(device_.config_);
-  
-    go_state(orig_state);
+    boost::mutex::scoped_lock(mutex_);
 
-    if (device_.getState() != orig_state)
-    {
-      ROS_ERROR("Failed to resume original device state after reconfiguring. The requested configuration may contain errors.");
-    }
-  }
+    if (state_ > target)
+      return lowerState(target);
 
-  virtual void reconfigure_hook(int level) {}
-
-  /*
-
-  void diagnosticsLoop()
-  {
-    //int frameless_updates = 0;
-
-    bool have_started = false;
-
-    cam_pub_.clear_window(); // Avoids having an error until the window fills up.
-    while (node_handle_.ok())
-    {
-      if (!started_video_)
-      {
-        stop();
-        close();
-        if (have_started && config_.exit_on_fault)
-        {
-          node_handle_.shutdown();
-          break;
-        }
-        open();
-        start();
-        have_started = true;
-      }
-
-      {
-        boost::mutex::scoped_lock(diagnostics_lock_);
-        diagnostic_.update();
-        self_test_.checkTest();
-      }
-      sleep(1);
-    }
-
-    ROS_DEBUG("Diagnostic thread exiting.");
-  }
-
-   */
-
-protected: 
-  bool go_state(dev_state_t target)
-  {
-    boost::mutex::scoped_lock(device_.mutex_);
-
-    dev_state_t cur_state = device_.getState();
-    
-    if (cur_state > target)
-      return lower_state(target);
-
-    if (cur_state < target)
-      return raise_state(target);
+    if (state_ < target)
+      return raiseState(target);
 
     return true;
   }
 
-  bool try_transition(dev_state_t target, void (Device::*transition)())
+  bool raiseState(state_t target)
   {
-    boost::mutex::scoped_lock(device_.mutex_);
-    (device_.*transition)();
-    return device_.getState() == target;
-  }
+    boost::mutex::scoped_lock(mutex_);
 
-  bool raise_state(dev_state_t target)
-  {
-    boost::mutex::scoped_lock(device_.mutex_);
-
-    switch (device_.getState())  
+    switch (getState())  
     {
-      case Device::CLOSED:
-        if (target <= Device::CLOSED)
+      case Driver::CLOSED:
+        if (target <= Driver::CLOSED)
           return true;
-        if (!try_transition(Device::OPENED, &Device::open))
+        if (!tryTransition(Driver::OPENED, &Driver::doOpen))
           return false;
 
-      case Device::OPENED:
-        if (target <= Device::OPENED)
+      case Driver::OPENED:
+        if (target <= Driver::OPENED)
           return true;
-        if (!try_transition(Device::RUNNING, &Device::start))
+        if (!tryTransition(Driver::RUNNING, &Driver::doStart))
           return false;
 
       default:
-        return target <= device_.getState();
+        return target <= getState();
     }
   }
 
-  bool lower_state(dev_state_t target)
+  bool lowerState(state_t target)
   {
-    boost::mutex::scoped_lock(device_.mutex_);
+    boost::mutex::scoped_lock(mutex_);
 
-    switch (device_.getState())  
+    switch (getState())  
     {
-      case Device::RUNNING:
-        if (target >= Device::RUNNING)
+      case Driver::RUNNING:
+        if (target >= Driver::RUNNING)
           return true;
-        if (!try_transition(Device::OPENED, &Device::stop))
+        if (!tryTransition(Driver::OPENED, &Driver::doStop))
           return false;
 
-      case Device::OPENED:
-        if (target >= Device::OPENED)
+      case Driver::OPENED:
+        if (target >= Driver::OPENED)
           return true;
-        if (!try_transition(Device::CLOSED, &Device::close))
+        if (!tryTransition(Driver::CLOSED, &Driver::doClose))
           return false;
 
       default:
-        return target >= device_.getState();
+        return target >= getState();
     }
   }
 
-  void go_running()
+  void goRunning()
   {
-    go_state(Device::RUNNING);
+    goState(Driver::RUNNING);
   }
 
-  void go_opened()
+  void goOpened()
   {
-    go_state(Device::OPENED);
+    goState(Driver::OPENED);
   }
 
-  void go_closed()
+  void goClosed()
   {
-    go_state(Device::CLOSED);
+    goState(Driver::CLOSED);
   }
 
   void stop()
   {
-    lower_state(Device::OPENED);
+    lowerState(Driver::OPENED);
   }
 
   void start()
   {
-    raise_state(Device::RUNNING);
+    raiseState(Driver::RUNNING);
   }
   
   void open()
   {
-    raise_state(Device::OPENED);
+    raiseState(Driver::OPENED);
   }
   
   void close()
   {
-    lower_state(Device::CLOSED);
+    lowerState(Driver::CLOSED);
   }
   
-  bool is_running()
+  bool isRunning()
   {
-    return device_.getState() == Device::RUNNING;
+    return getState() == Driver::RUNNING;
   }
 
-  bool is_opened()
+  bool isOpened()
   {
-    return device_.getState() == Device::OPENED;
+    return getState() == Driver::OPENED;
   }
 
-  bool is_closed()
+  bool isClosed()
   {
-    return device_.getState() == Device::CLOSED;
+    return getState() == Driver::CLOSED;
   }
   
-  bool is_stopped()
+  bool isStopped()
   {
-    dev_state_t s = device_.getState();
-    return s == Device::CLOSED || s == Device::OPENED;
+    state_t s = getState();
+    return s == Driver::CLOSED || s == Driver::OPENED;
   }
 
-private:
-/*  void connectCallback(const ros::PublisherPtr &pub)
+  state_t getState()
   {
-    if (pub.numSubscribers == 1)
-      num_subscribed_topics_++;
-
-    if (num_subscribed_topics_ == 1)
-      start();
+    return state_;
   }
 
-  void disconnectCallback(const ros::PublisherPtr &pub)
+  const std::string getStateName()
   {
-    if (pub.numSubscribers == 0)
-      num_subscribed_topics_++;
-
-    if (num_subscribed_topics_ == 0)
-      stop();
-  }*/
-
-  void prepare_diagnostics()
-  {
-    diagnostic_.add(ros::this_node::getName() + ": Driver Status", this, &Driver::status_diagnostic);
-    add_diagnostics();
+    return getStateName(state_);
   }
-
-  void status_diagnostic(diagnostic_updater::DiagnosticStatusWrapper& stat)
+  
+  static const std::string &getStateName(state_t s)
   {
-    stat.summary(1, "Driver is okay.");
-    
-    stat.adds("Device state:", device_.getStateName());
-    /// @fixme need to put something more useful here.
-  }
-
-  void prepare_self_tests()
-  {
-    self_test_.add( "Interruption Test", &Driver::interruptionTest );
-    add_stopped_tests();
-    self_test_.add( "Connection Test", &Driver::openTest );
-    add_opened_tests();
-    self_test_.add( "Start Streaming Test", &Driver::runTest );
-    add_running_tests();
-    self_test_.add( "Stop Streaming Test", &Driver::stopTest );
-    self_test_.add( "Disconnection Test", &Driver::closeTest );
-    self_test_.add( "Resume Activity", &Driver::resumeTest );
-  } 
-
-  void interruptionTest(diagnostic_updater::DiagnosticStatusWrapper& status)
-  {
-    pre_self_test_device_state_ = device_.getState();
-    go_closed();
-    
-    if (num_subscribed_topics_ > 0)
-      status.summary(1, "There were active subscribers.  Running of self test interrupted operations.");
-    else if (is_closed())
-      status.summary(2, "Could not close device.");
+    static const std::string names[4] = {
+      std::string("CLOSED"),
+      std::string("OPENED"),
+      std::string("RUNNING"),
+      std::string("Unknown")
+    };
+  
+    if (s >= 0 && s <= 2)
+      return names[(int) s];
     else
-      status.summary(0, "No operation interrupted.");
-  } 
-    
-  void openTest(diagnostic_updater::DiagnosticStatusWrapper& status)
-  {
-    open();
-
-    if (is_opened())
-      status.summaryf(0, "Successfully opened device %s", device_.getID().c_str());
-    else
-      status.summary(2, "Failed to open.");
+      return names[3];
   }
 
-  void runTest(diagnostic_updater::DiagnosticStatusWrapper& status)
-  {
-    start();
-    
-    if (is_running())      
-      status.summaryf(0, "Successfully started streaming.");
-    else
-      status.summary(2, "Failed to start streaming.");
-  } 
-
-  void stopTest(diagnostic_updater::DiagnosticStatusWrapper& status)
-  {
-    stop();
-    
-    if (is_opened())      
-      status.summaryf(0, "Successfully stopped streaming.");
-    else
-      status.summary(2, "Failed to stop streaming.");
-  } 
-  
-  void closeTest(diagnostic_updater::DiagnosticStatusWrapper& status)
-  {
-    close();
-    
-    if (is_closed())      
-      status.summaryf(0, "Successfully closed device.");
-    else
-      status.summary(2, "Failed to close device.");
-  } 
-  
-  void resumeTest(diagnostic_updater::DiagnosticStatusWrapper& status)
-  {
-    go_state(pre_self_test_device_state_);
-  
-    dev_state_t currentState = device_.getState();
-    std::string desired_state_name = Device::getStateName(pre_self_test_device_state_);
-    std::string current_state_name = Device::getStateName(currentState);
-   
-    if (currentState == pre_self_test_device_state_)
-      status.summaryf(0, "Successfully returned to %s state.", desired_state_name.c_str());
-    else
-      status.summaryf(2, "Failed to return to %s state, now in state %s.", desired_state_name.c_str(), current_state_name.c_str());
-  }
-  
-public:
-  
+  Driver() : state_(CLOSED) {}
   virtual ~Driver() {}
 
-  int spin()
+private:  
+  const std::string &getTransitionName(void (Driver::*transition)())
   {
-    ros_thread_.reset(new boost::thread(boost::bind(&ros::spin)));
-    /// @todo What happens if thread creation fails?
-    assert(ros_thread_);
-                     
-    /// @todo Do something about exit status?
-    while (node_handle_.ok() && state_ != EXITING && !ctrl_c_hit_count_)
-    {
-      go_running();
-      /// Will need some locking here or in diagnostic_updater?
-      diagnostic_.update();
-      self_test_.checkTest();
-      sleep(1); /// @todo use a ROS sleep here?
-    }
-  
-    go_closed();
-    
-    if (ros_thread_ && !ros_thread_->timed_join((boost::posix_time::milliseconds) 2000))
-    {
-      ROS_ERROR("ROS thread did not die after two seconds. Pretending that it did. This is probably a bad sign.");
-    }
-    ros_thread_.reset();
+    static const std::string open = std::string("open");
+    static const std::string close = std::string("close");
+    static const std::string start = std::string("start");
+    static const std::string stop = std::string("stop");
+    static const std::string unknown = std::string("Unknown");
 
-    return 0; /// @todo Work on return type here.
+    if (transition == &Driver::doOpen)
+      return open;
+    if (transition == &Driver::doClose)
+      return close;
+    if (transition == &Driver::doStart)
+      return start;
+    if (transition == &Driver::doStop)
+      return stop;
+    
+    return unknown;
   }
-  
-  Driver(ros::NodeHandle &nh) : node_handle_(nh), self_test_(this, node_handle_), diagnostic_(node_handle_), reconfigurator_(node_handle_)
+
+  bool tryTransition(state_t target, void (Driver::*transition)())
   {
-    num_subscribed_topics_ = 0; /// @fixme this variable is hoakey.
-    exit_status_ = 0;
-    prepare_diagnostics();
-    prepare_self_tests();
-    reconfigurator_.set_callback(boost::bind(&Driver::reconfigure, this, _1));
+    state_t orig = state_;
+    ROS_DEBUG("Trying transition %s from %s to %s.", getTransitionName(transition).c_str(), getStateName(orig).c_str(), getStateName(target).c_str());
+    boost::mutex::scoped_lock(mutex_);
+    (this->*transition)();
+    bool out = state_ == target;
+    ROS_DEBUG("Transition %s from %s to %s %s.", getTransitionName(transition).c_str(), getStateName(orig).c_str(), getStateName(target).c_str(), out ? "succeeded" : "failed");
+    return out;
   }
 };
 
-int AbstractDriver::ctrl_c_hit_count_ = 0;
-  
-// @todo exit status.
-// @todo take over ctrl_c.
+/// @fixme derived classes for nodes that only poll or only stream.
 
 };
 
 #endif
+
