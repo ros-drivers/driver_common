@@ -1,0 +1,17 @@
+<package>
+  <description brief="dynamic_reconfigure">
+    This package provides a class to facilitate dynamic node
+    reconfiguration. 
+  </description>
+  <author>Blaise Gassend</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://pr.willowgarage.com/wiki/dynamic_reconfigure</url>
+  <depend package="rospy" />
+  <depend package="roscpp" />
+  <export>
+        <cpp cflags="-I${prefix}/include -I${prefix}/msg/cpp"/>
+  </export>
+</package>
+
+
