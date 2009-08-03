@@ -48,6 +48,11 @@
 #include <boost/function.hpp>
 #include <ros/node_handle.h>
 
+/**
+ * @todo Add checks that settings are within range.
+ * @todo Add diagnostics.
+ */
+
 namespace dynamic_reconfigure
 {
 /**
@@ -60,14 +65,16 @@ public:
   {
   }
   
-  void set_callback(const boost::function<void(int level)> &callback)
+  void setCallback(const boost::function<void(int level)> &callback)
   {
     callback_ = callback;
     if (callback) // At startup we need to load the configuration with all level bits set. (Everything has changed.)
       callback(~0);
+    else
+      ROS_INFO("setCallback did not call callback because it was zero."); /// @todo kill this line.
   }
 
-  void clear_callback()
+  void clearCallback()
   {
     callback_.clear();
   }
@@ -82,44 +89,44 @@ class Reconfigurator : public AbstractReconfigurator
 public:
   Reconfigurator(ros::NodeHandle &nh) : node_handle_(nh)
   {
-    config_ = ConfigManipulator::get_defaults();
-    ConfigManipulator::read_from_param_server(node_handle_, config_);
+    config_ = ConfigManipulator::getDefaults();
+    ConfigManipulator::readFromParamServer(node_handle_, config_);
     // Write to make sure everything is filled in.
-    ConfigManipulator::write_to_param_server(node_handle_, config_);
+    ConfigManipulator::writeToParamServer(node_handle_, config_);
     
     static const std::string get_config = "~get_configuration";
-    get_service_ = node_handle_.advertiseService(get_config, &Reconfigurator<ConfigManipulator>::get_config_service, this);
+    get_service_ = node_handle_.advertiseService(get_config, &Reconfigurator<ConfigManipulator>::getConfigService, this);
     static const std::string set_config = "~set_configuration";
-    set_service_ = node_handle_.advertiseService(set_config, &Reconfigurator<ConfigManipulator>::set_config_service, this);
+    set_service_ = node_handle_.advertiseService(set_config, &Reconfigurator<ConfigManipulator>::setConfigService, this);
   }
 
-  void get_config(class ConfigManipulator::ConfigType &config)
+  void getConfig(class ConfigManipulator::ConfigType &config)
   {
     config = config_;
   }
 
-  void set_config(const class ConfigManipulator::ConfigType &config)
+  void setConfig(const class ConfigManipulator::ConfigType &config)
   {
     config_ = config;
-    ConfigManipulator::write_to_param_server(node_handle_, config_);
+    ConfigManipulator::writeToParamServer(node_handle_, config_);
   }
 
 private:
-  bool get_config_service(typename ConfigManipulator::GetService::Request &req, 
+  bool getConfigService(typename ConfigManipulator::GetService::Request &req, 
       typename ConfigManipulator::GetService::Response &rsp)
   {
-    rsp.defaults = ConfigManipulator::get_defaults();
-    rsp.min = ConfigManipulator::get_min();
-    rsp.max = ConfigManipulator::get_max();
+    rsp.defaults = ConfigManipulator::getDefaults();
+    rsp.min = ConfigManipulator::getMin();
+    rsp.max = ConfigManipulator::getMax();
     return true;
   }
 
-  bool set_config_service(typename ConfigManipulator::SetService::Request &req, 
+  bool setConfigService(typename ConfigManipulator::SetService::Request &req, 
       typename ConfigManipulator::SetService::Response &rsp)
   {
-    int level = ConfigManipulator::get_change_level(req.config, config_);
+    int level = ConfigManipulator::getChangeLevel(req.config, config_);
 
-    set_config(req.config);
+    setConfig(req.config);
 
     // We expect config_ to be read, and possibly written during the
     // callback.

@@ -64,19 +64,19 @@ namespace ${pkgname}
     typedef ${pkgname}::Set${name}Config SetService;
     typedef ${pkgname}::${name}Config ConfigType;
   
-    static const ConfigType &get_defaults()
+    static const ConfigType &getDefaults()
     {
       initialize();
       return defaults;
     }
 
-    static const ConfigType &get_min()
+    static const ConfigType &getMin()
     {
       initialize();
       return min;
     }
 
-    static const ConfigType &get_max()
+    static const ConfigType &getMax()
     {
       initialize();
       return max;
@@ -89,19 +89,19 @@ namespace ${pkgname}
      * \param nh ros::NodeHandle through which to access the name server
      * \param config Reference to the configuration to modify
      */
-    static void read_from_param_server(ros::NodeHandle &nh, ConfigType &config)
+    static void readFromParamServer(ros::NodeHandle &nh, ConfigType &config)
     {
 $readparam
 #line ${linenum} "${filename}"
     }
 
-    static void write_to_param_server(ros::NodeHandle &nh, const ConfigType &config)
+    static void writeToParamServer(ros::NodeHandle &nh, const ConfigType &config)
     {
 $writeparam
 #line ${linenum} "${filename}"
     }
     
-    static int get_change_level(const ConfigType &config1, const ConfigType &config2)
+    static int getChangeLevel(const ConfigType &config1, const ConfigType &config2)
     {
       int changelvl = 0;
 $changelvl
