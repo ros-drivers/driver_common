@@ -1,0 +1,12 @@
+<package>
+  <description>A framework for writing drivers that helps with runtime reconfiguration, diagnostics and self-test.</description>
+  <author>Blaise Gassend</author>
+  <license>BSD</license>
+  <review status="unreviewed"/>
+  <depend package="roscpp" />
+  <export>
+    <cpp cflags="-I${prefix}/include"/>
+  </export>
+  <url></url>
+</package>
+
