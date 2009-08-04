@@ -250,13 +250,21 @@ private:
     driver_.open();
 
     if (driver_.isOpened())
-      status.summaryf(0, "Successfully opened device %s", driver_.getID().c_str());
+    {
+      std::string ID = driver_.getID();
+      status.summaryf(0, "Successfully opened device %s", ID.c_str());
+      self_test_.setID(ID);
+    }
     else
     {
       sleep(2);
       driver_.open();
       if (driver_.isOpened())
-        status.summaryf(1, "Successfully opened device %s after one retry", driver_.getID().c_str());
+      {
+        std::string ID = driver_.getID();
+        status.summaryf(1, "Successfully opened device %s after one retry", ID.c_str());
+        self_test_.setID(ID);
+      }
       else
         status.summary(2, "Failed to open.");
     }
