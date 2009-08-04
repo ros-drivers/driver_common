@@ -249,16 +249,17 @@ private:
   {
     driver_.open();
 
-    if (!driver_.isOpened()) // Retry to avoid occasional glitches.
-    {
-      sleep(2);
-      driver_.open();
-    }
-
     if (driver_.isOpened())
       status.summaryf(0, "Successfully opened device %s", driver_.getID().c_str());
     else
-      status.summary(2, "Failed to open.");
+    {
+      sleep(2);
+      driver_.open();
+      if (driver_.isOpened())
+        status.summaryf(1, "Successfully opened device %s after one retry", driver_.getID().c_str());
+      else
+        status.summary(2, "Failed to open.");
+    }
   }
 
   void runTest(diagnostic_updater::DiagnosticStatusWrapper& status)
@@ -274,7 +275,14 @@ private:
     if (driver_.isRunning())      
       status.summaryf(0, "Successfully started streaming.");
     else
-      status.summary(2, "Failed to start streaming.");
+    {
+      sleep(2);
+      driver_.open();
+      if (driver_.isOpened())
+        status.summaryf(1, "Successfully started streaming after one retry.");
+      else
+        status.summary(2, "Failed to start streaming.");
+    }
   } 
 
   void stopTest(diagnostic_updater::DiagnosticStatusWrapper& status)
