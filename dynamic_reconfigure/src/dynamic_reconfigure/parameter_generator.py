@@ -77,12 +77,13 @@ class ParameterGenerator:
             'bool' : False,
             }
             
-    def __init__(self, pkgname, name):
+    def __init__(self, pkgname, nodename, name):
         self.parameters = []
         self.pkgname = pkgname
         self.pkgpath = roslib.packages.get_pkg_dir(pkgname)
         self.dynconfpath = roslib.packages.get_pkg_dir("dynamic_reconfigure")
         self.name = name
+        self.nodename = nodename
         self.msgname = name+"Config"
 
     def add(self, name, type, level, description, default = None, min = None, max = None):
@@ -134,19 +135,36 @@ class ParameterGenerator:
         self.generatesetsrv()
         self.generategetsrv()
         self.generatedoc()
+        self.generateusage()
 
     def generatedoc(self):
         self.mkdir("dox")
         f = open(os.path.join(self.pkgpath, "dox", self.msgname+".dox"), 'w')
-        print >> f, "/**"
-        print >> f, "\\subsection parameters ROS parameters"
+        #print >> f, "/**"
+        print >> f, "\\subsubsection parameters ROS parameters"
         print >> f
         print >> f, "Reads and maintains the following parameters on the ROS server"
         print >> f
         for param in self.parameters:
-            print >> f, Template("- \b \"~$name\" : \b [$type] $description min: $min, default: $default, max: $max").substitute(param)
+            print >> f, Template("- \\b \"~$name\" : \\b [$type] $description min: $min, default: $default, max: $max").substitute(param)
         print >> f
-        print >> f, "*/"
+        #print >> f, "*/"
+        f.close()
+
+    def generateusage(self):
+        self.mkdir("dox")
+        f = open(os.path.join(self.pkgpath, "dox", self.msgname+"-usage.dox"), 'w')
+        #print >> f, "/**"
+        print >> f, "\\subsubsection usage Usage"
+        print >> f, '\\verbatim'
+        print >> f, Template('<node name="$nodename" pkg="$pkgname" type="$nodename">').\
+                substitute(pkgname = self.pkgname, nodename = self.nodename)
+        for param in self.parameters:
+            print >> f, Template('  <param name="$name" type="$type" value="$default" />').substitute(param)
+        print >> f, '</node>'
+        print >> f, '\\endverbatim'
+        print >> f
+        #print >> f, "*/"
         f.close()
 
     def crepr(self, param, val):
