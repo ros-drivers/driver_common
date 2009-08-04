@@ -139,39 +139,39 @@ public:
     }
   }
 
-  void goRunning()
+  bool goRunning()
   {
-    goState(Driver::RUNNING);
+    return goState(Driver::RUNNING);
   }
 
-  void goOpened()
+  bool goOpened()
   {
-    goState(Driver::OPENED);
+    return goState(Driver::OPENED);
   }
 
-  void goClosed()
+  bool goClosed()
   {
-    goState(Driver::CLOSED);
+    return goState(Driver::CLOSED);
   }
 
-  void stop()
+  bool stop()
   {
-    lowerState(Driver::OPENED);
+    return lowerState(Driver::OPENED);
   }
 
-  void start()
+  bool start()
   {
-    raiseState(Driver::RUNNING);
+    return raiseState(Driver::RUNNING);
   }
   
-  void open()
+  bool open()
   {
-    raiseState(Driver::OPENED);
+    return raiseState(Driver::OPENED);
   }
   
-  void close()
+  bool close()
   {
-    lowerState(Driver::CLOSED);
+    return lowerState(Driver::CLOSED);
   }
   
   bool isRunning()

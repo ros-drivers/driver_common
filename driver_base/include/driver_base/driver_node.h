@@ -211,7 +211,7 @@ private:
 
   void statusDiagnostic(diagnostic_updater::DiagnosticStatusWrapper& stat)
   {
-    stat.summary(1, "Driver is okay.");
+    stat.summary(0, "Driver is okay.");
     
     stat.adds("Driver state:", driver_.getStateName());
     /// @fixme need to put something more useful here.
@@ -240,7 +240,7 @@ private:
     if (num_subscribed_topics_ > 0)  /// @todo need to set num_subscribed_topics_ somewhere.
       status.summary(1, "There were active subscribers.  Running of self test interrupted operations.");
     else if (s != Driver::CLOSED)
-      status.summaryf(2, "Could not close device, currently in state %s.", Driver::getStateName(s));
+      status.summaryf(2, "Could not close device, currently in state %s.", Driver::getStateName(s).c_str());
     else
       status.summary(0, "No operation interrupted.");
   } 
@@ -317,11 +317,10 @@ public:
     while (node_handle_.ok() && state_ != EXITING && !ctrl_c_hit_count_)
     {
       if (!driver_.isRunning())
-        if (!driver_.goRunning())
-        {
-          driver_.goClosed(); 
-          driver_.goRunning();
-        }
+      {
+        driver_.goClosed(); 
+        driver_.goRunning();
+      }
 
       /// Will need some locking here or in diagnostic_updater?
       diagnostic_.update();
