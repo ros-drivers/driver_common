@@ -249,6 +249,12 @@ private:
   {
     driver_.open();
 
+    if (!driver_.isOpened()) // Retry to avoid occasional glitches.
+    {
+      sleep(2);
+      driver_.open();
+    }
+
     if (driver_.isOpened())
       status.summaryf(0, "Successfully opened device %s", driver_.getID().c_str());
     else
@@ -259,6 +265,12 @@ private:
   {
     driver_.start();
     
+    if (!driver_.isRunning()) // Retry to avoid occasional glitches.
+    {
+      sleep(2);
+      driver_.start();
+    }
+
     if (driver_.isRunning())      
       status.summaryf(0, "Successfully started streaming.");
     else
