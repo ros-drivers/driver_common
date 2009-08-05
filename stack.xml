@@ -21,5 +21,6 @@
   <author>Maintained by Blaise Gassend</author>
   <review status="unreviewed" notes=""/>
   <url>http://pr.willowgarage.com/wiki/driver_common</url>
-  <depend stack="ros" version="0.7"/>
+  <depend stack="ros"/> <!-- rospy, roscpp, roscpp --> 
+
 </stack>
