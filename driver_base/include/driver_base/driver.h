@@ -71,7 +71,15 @@ protected:
   virtual void doStart() = 0;
   virtual void doStop() = 0;
 
+  typedef boost::function< void() > hookFunction;
+  hookFunction postOpenHook;
+
 public:
+  void setPostOpenHook(hookFunction f)
+  {
+    postOpenHook = f;
+  }
+
   virtual std::string getID() = 0;
   
   boost::mutex mutex_; ///@todo should this be protected?
@@ -252,6 +260,8 @@ private:
     (this->*transition)();
     bool out = state_ == target;
     ROS_DEBUG("Transition %s from %s to %s %s.", getTransitionName(transition).c_str(), getStateName(orig).c_str(), getStateName(target).c_str(), out ? "succeeded" : "failed");
+    if (out && transition == &Driver::doOpen)
+      postOpenHook();
     return out;
   }
 };
