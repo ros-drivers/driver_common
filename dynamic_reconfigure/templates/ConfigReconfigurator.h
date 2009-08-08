@@ -109,6 +109,11 @@ $changelvl
       return changelvl;
     }
 
+    static void clamp(ConfigType &config)
+    {
+#line ${linenum} "${filename}"
+    }
+  
   private:
     static bool initialized;
     static boost::mutex initializing;
