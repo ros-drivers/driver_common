@@ -128,8 +128,12 @@ class ParameterGenerator:
         self.mkdirabs(path)
 
     def generate(self):
+        print '**************************************************************'
+        print '**************************************************************'
         print Template("Generating reconfiguration files for $name in $pkgname").\
                 substitute(name=self.name, pkgname = self.pkgname)
+        print '**************************************************************'
+        print '**************************************************************'
         self.generateconfigmanipulator()
         self.generatemsg()
         self.generatesetsrv()

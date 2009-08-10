@@ -172,7 +172,7 @@ macro(gencfg_cpp)
     set(_output_getsrv ${PROJECT_SOURCE_DIR}/srv/Get${_cfg_bare}Config.srv)
     set(_output_setsrv ${PROJECT_SOURCE_DIR}/srv/Set${_cfg_bare}Config.srv)
     set(_output_dox ${PROJECT_SOURCE_DIR}/dox/${_cfg_bare}Config.dox)
-    set(_output_usage ${PROJECT_SOURCE_DIR}/dox/${_cfg_bare}Config-Usage.dox)
+    set(_output_usage ${PROJECT_SOURCE_DIR}/dox/${_cfg_bare}Config-usage.dox)
   
     # Indicate the msg and srv files that will get generated.
     string(REPLACE ${PROJECT_SOURCE_DIR}/msg/ "" _output_msg_name ${_output_msg})
