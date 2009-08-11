@@ -213,7 +213,7 @@ private:
   {
     stat.summary(0, "Driver is okay.");
     
-    stat.adds("Driver state:", driver_.getStateName());
+    stat.add("Driver state:", driver_.getStateName());
     /// @fixme need to put something more useful here.
   }
 
