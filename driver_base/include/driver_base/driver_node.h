@@ -41,6 +41,7 @@
 #include <ros/node_handle.h>
 #include <boost/thread.hpp>
 #include <boost/bind.hpp>
+#include <dynamic_reconfigure/SensorLevels.h>
 
 namespace driver_base
 {
@@ -222,6 +223,7 @@ private:
     self_test_.add( "Interruption Test", &DriverNode::interruptionTest );
     addStoppedTests();
     self_test_.add( "Connection Test", &DriverNode::openTest );
+    self_test_.add( "ID Test", &DriverNode::idTest );
     addOpenedTests();
     self_test_.add( "Start Streaming Test", &DriverNode::runTest );
     addRunningTests();
@@ -250,24 +252,30 @@ private:
     driver_.open();
 
     if (driver_.isOpened())
-    {
-      std::string ID = driver_.getID();
-      status.summaryf(0, "Successfully opened device %s", ID.c_str());
-      self_test_.setID(ID);
-    }
+      status.summaryf(0, "Successfully opened device");
     else
     {
       sleep(2);
       driver_.open();
       if (driver_.isOpened())
       {
-        std::string ID = driver_.getID();
-        status.summaryf(1, "Successfully opened device %s after one retry", ID.c_str());
-        self_test_.setID(ID);
+        status.summaryf(1, "Successfully opened device after one retry");
       }
       else
         status.summary(2, "Failed to open.");
     }
+  }
+  
+  void idTest(diagnostic_updater::DiagnosticStatusWrapper& status)
+  {
+    std::string ID = driver_.getID();
+    if (ID.compare(""))
+    {
+      status.summaryf(0, "Device ID is %s", ID.c_str());
+      self_test_.setID(ID);
+    }
+    else
+      status.summaryf(2, "Error reading Device ID");
   }
 
   void runTest(diagnostic_updater::DiagnosticStatusWrapper& status)
