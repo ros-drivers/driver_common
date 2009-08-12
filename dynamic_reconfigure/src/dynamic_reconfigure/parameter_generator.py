@@ -121,7 +121,7 @@ class ParameterGenerator:
                     os.mkdir(path)
                 except OSError:
                     # Probably got created by somebody else, lets check.
-                    self.mkdirabs(self, path, True)
+                    self.mkdirabs(path, True)
 
     def mkdir(self, path):
         path = os.path.join(self.pkgpath, path)
