@@ -4,7 +4,7 @@
   <license>BSD</license>
   <review status="unreviewed"/>
   <depend package="roscpp" />
-  <depend package="self_tets" />
+  <depend package="self_test" />
   <depend package="diagnostic_updater" />
   <depend package="dynamic_reconfigure" />
   <export>
