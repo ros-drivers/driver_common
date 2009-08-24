@@ -20,7 +20,7 @@
   </description>
   <author>Maintained by Blaise Gassend</author>
   <review status="unreviewed" notes=""/>
-  <url>http://pr.willowgarage.com/wiki/driver_common</url>
+  <url>http://ros.org/wiki/driver_common</url>
   <depend stack="ros"/> <!-- rospy, roscpp, roscpp --> 
-
+  <depend stack="diagnostics"/> <!-- self_test, diagnostic_updater -->
 </stack>
