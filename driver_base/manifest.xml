@@ -10,6 +10,6 @@
   <export>
     <cpp cflags="-I${prefix}/include"/>
   </export>
-  <url></url>
+  <url>http://www.ros.org/wiki/driver_base</url>
 </package>
 

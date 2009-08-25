@@ -6,7 +6,7 @@
   <author>Blaise Gassend</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
-  <url>http://pr.willowgarage.com/wiki/dynamic_reconfigure</url>
+  <url>http://www.ros.org/wiki/dynamic_reconfigure</url>
   <depend package="rospy" />
   <depend package="roscpp" />
   <export>
