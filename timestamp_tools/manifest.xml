@@ -11,7 +11,8 @@
   <author>Blaise Gassend</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
-  <url>http://www.ros.org/wiki/timestamp-tools</url>
+  <url>http://www.ros.org/wiki/timestamp_tools</url>
+  <depend package="roscpp">
 </package>
 
 
