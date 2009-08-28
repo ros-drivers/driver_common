@@ -12,7 +12,7 @@
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
   <url>http://www.ros.org/wiki/timestamp_tools</url>
-  <depend package="roscpp">
+  <depend package="roscpp" />
 </package>
 
 
