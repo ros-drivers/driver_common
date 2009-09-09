@@ -2,11 +2,14 @@
   <description brief="Classes to facilitate timestamping of sensor data.">
     This package provides:
     
-    - a FrameTimeFilter, which takes a stream of approximate timestamps and
-    a theoretical period and outputs a stream of corrected timestamps
+    - a PeriodicTimestampMinFilter, which takes a stream of timestamps with
+    a known period that may occasionally have been arbitrarily delayed, and
+    outputs a stream of timestamps in which the arbitrary delays have been
+    filtered out using a min filter.
     
-    - a TriggerSynchronizer, which matches a stream of approximate timestamps
-    with a timestamp topic.
+    - a TriggerMatcher, that matches a stream of data structures with
+    approximate timestamps to a stream of exact timestamps.
+
   </description>
   <author>Blaise Gassend</author>
   <license>BSD</license>
