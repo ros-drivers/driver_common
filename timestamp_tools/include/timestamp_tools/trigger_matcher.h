@@ -1,10 +1,11 @@
 #ifndef __TIMESTAMP_TOOLS__TRIGGER_MATCHER_H__
 #define __TIMESTAMP_TOOLS__TRIGGER_MATCHER_H__
 
-#include <ros/roslib.h>
+#include <ros/ros.h>
 #include <queue>
-#include <pair>
-#include <boost/thread.h>
+#include <utility>
+#include <boost/thread.hpp>
+#include <roslib/Header.h>
 
 namespace timestamp_tools
 {
@@ -12,8 +13,9 @@ namespace timestamp_tools
 template <class C>
 class TriggerMatcher
 {
+public:
   typedef std::pair<ros::Time, boost::shared_ptr<C> > DataPair;
-  typedef boost::function<void, ros::Time, boost::shared_ptr<C> > MatchCallback;
+  typedef boost::function<void(ros::Time, boost::shared_ptr<C>)> MatchCallback;
 
 private:
   boost::mutex mutex_;
@@ -26,13 +28,15 @@ private:
   ros::Time last_data_stamp_;
 
   MatchCallback matchCallback_;
-  int late_data_count_allowed_;
-  int late_data_count_;
+  unsigned int late_data_count_allowed_;
+  unsigned int late_data_count_;
+  unsigned int max_data_queue_length_;
+  unsigned int max_trig_queue_length_;
   bool locked_;
 
   bool nonCausalHeads()
   { // Are the heads non-causal? (Assumes the heads are present.)
-    return trig_queue_.front() > data_queue_.front().first();
+    return trig_queue_.front() > data_queue_.front().first;
   }
   
   void tryPop()
@@ -44,24 +48,26 @@ private:
       if (nonCausalHeads())
       {
         ROS_WARN("TriggerMatcher: data arrived before trigger. Discarding data sample.");
-        data_queue_.pop_front();
+        data_queue_.pop();
         continue;
       }
       
-      ros::Time trig_stamp;
+      ros::Time trig_stamp = trig_queue_.front();
       
       // If we are not locked, then we need to check that the next trigger
-      // time stamp would not be satisfactory.
-      if (!locked_)
+      // time stamp would not be satisfactory. (If no late counts are
+      // allowed then we are always unlocked.)
+      if (!locked_ || !late_data_count_allowed_)
       {
         while (true)
         {
-          if (trig_queue.length() < 2)
+          if (trig_queue_.size() < 2)
             return; // Can't do the check now.
 
-          trig_stamp = trig_queue_.pop_front();
+          trig_queue_.pop();
           if (nonCausalHeads()) 
             break; // Head is non-causal, we have arrived.
+          trig_stamp = trig_queue_.front(); // Skip that trigger event.
         }
         locked_ = true;
         late_data_count_ = 0;
@@ -72,10 +78,11 @@ private:
         // have missed a timestamp, or the data may just have been delayed a
         // lot. We count it and if it happens too often we assume that a
         // timestamp was missed and redo the locking process.
-        if (last_data_stamp_ > trig_queue_.head())
+        if (last_data_stamp_ > trig_stamp)
         {
-          if (++late_data_count_ > late_data_count_allowed_)
+          if (++late_data_count_ >= late_data_count_allowed_)
           {
+            ROS_WARN("TriggerMatcher: too many late data packets. Assuming missed trigger. Relocking...");
             locked_ = false;
             continue;
           }
@@ -83,17 +90,23 @@ private:
         else
           late_data_count_ = 0;
 
-        trig_stamp = trig_queue_.pop_front();
+        trig_queue_.pop();
       }
       
       // Call the callback
-      C &data = data_queue_.pop_front().second();
-      matchCallback_(trig_stamp, data.second());
-      last_data_stamp_ = data.first();
+      DataPair &data = data_queue_.front();
+      matchCallback_(trig_stamp, data.second);
+      last_data_stamp_ = data.first;
+      data_queue_.pop();
     }
   }
 
 public:
+  void setLateDataCountAllowed(unsigned int v)
+  {
+    late_data_count_allowed_ = v;
+  }
+
   void setTrigDelay(double delay)
   {
     setTrigDelay(ros::Duration(delay));
@@ -109,18 +122,20 @@ public:
     matchCallback_ = cb;
   }
 
-  TriggerMatcher(int late_data_count_allowed) : 
+  TriggerMatcher(unsigned int late_data_count_allowed, unsigned int max_trig_queue_length, unsigned int max_data_queue_length) : 
     trig_delay_(0), 
+    last_data_stamp_(ros::TIME_MIN),
     late_data_count_allowed_(late_data_count_allowed),
     late_data_count_(0),
-    last_data_stamp_(TIME_MIN),
+    max_data_queue_length_(max_data_queue_length),
+    max_trig_queue_length_(max_trig_queue_length),
     locked_(false)
   {
   }
 
   void triggerCallback(const roslib::HeaderPtr &msg)
   {
-    triggerCallback(msg.stamp);
+    triggerCallback(msg->stamp);
   }
 
   void triggerCallback(double stamp)
@@ -132,25 +147,46 @@ public:
   {
     boost::mutex::scoped_lock(mutex_);
     
-    trig_queue.push_back(stamp + trig_delay_);
+    trig_queue_.push(stamp + trig_delay_);
+    if (trig_queue_.size() > max_trig_queue_length_)
+    {
+      ROS_WARN("TriggerMatcher: trig_queue_ overflow dropping from front.");
+      trig_queue_.pop();
+    }
     tryPop();
+  }
+
+  void dataCallback(double stamp, const C &data)
+  {
+    dataCallback(ros::Time(stamp), data);
+  }
+
+  void dataCallback(const ros::Time &stamp, const C &data)
+  {
+    boost::shared_ptr<C> ptr = boost::shared_ptr<C>(new C(data));
+    dataCallback(stamp, ptr);
   }
 
   void dataCallback(double stamp, const boost::shared_ptr<C> &data)
   {
-    dataCallback(std::pair(ros::Time(stamp), data));
+    dataCallback(ros::Time(stamp), data);
   }
 
   void dataCallback(const ros::Time &stamp, const boost::shared_ptr<C> &data)
   {
-    dataCallback(std::pair(stamp, data));
+    dataCallback(DataPair(stamp, data));
   }
 
-  void DataCallback(const DataPair &pair)
+  void dataCallback(const DataPair &pair)
   {
     boost::mutex::scoped_lock(mutex_);
 
-    data_queue.push_back(pair);
+    data_queue_.push(pair);
+    if (data_queue_.size() > max_data_queue_length_)
+    {
+      ROS_WARN("TriggerMatcher: trig_queue_ overflow dropping from front.");
+      data_queue_.pop();
+    }
     tryPop();
   }
 };
