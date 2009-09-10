@@ -122,6 +122,14 @@ public:
     matchCallback_ = cb;
   }
 
+  void reset()
+  {
+    boost::mutex::scoped_lock(mutex_);
+
+    trig_queue_ = std::queue<ros::Time>();
+    data_queue_ = std::queue<DataPair>();
+  }
+
   TriggerMatcher(unsigned int late_data_count_allowed, unsigned int max_trig_queue_length, unsigned int max_data_queue_length) : 
     trig_delay_(0), 
     last_data_stamp_(ros::TIME_MIN),
