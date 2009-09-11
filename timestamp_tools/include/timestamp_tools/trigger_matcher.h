@@ -26,7 +26,7 @@ protected:
       // timestamp for the data and drop it.
       if (nonCausalHeads(data_time))
       {
-        ROS_WARN("TriggerMatcher: data arrived before trigger. Discarding data sample.");
+        ROS_WARN("TriggerMatcherBase: data arrived before trigger. Discarding data sample.");
         return DropData;
       }
       
@@ -66,7 +66,7 @@ protected:
           //ROS_DEBUG("Late packet...");
           if (++late_data_count_ >= late_data_count_allowed_)
           {
-            ROS_WARN("TriggerMatcher: too many late data packets. Assuming missed trigger. Relocking...");
+            ROS_WARN("TriggerMatcherBase: too many late data packets. Assuming missed trigger. Relocking...");
             synchronized_ = false;
             continue;
           }
@@ -158,7 +158,7 @@ public:
     trig_queue_.push(stamp + trig_delay_);
     if (trig_queue_.size() > max_trig_queue_length_)
     {
-      ROS_WARN("TriggerMatcher: trig_queue_ overflow dropping from front.");
+      ROS_WARN("TriggerMatcherBase: trig_queue_ overflow dropping from front.");
       trig_queue_.pop();
     }
     gotTrigger();
@@ -334,7 +334,7 @@ public:
     data_queue_.push(pair);
     if (data_queue_.size() > max_data_queue_length_)
     {
-      ROS_WARN("TriggerMatcher: trig_queue_ overflow dropping from front.");
+      ROS_WARN("QueuedTriggerMatcher: trig_queue_ overflow dropping from front.");
       data_queue_.pop();
     }
     gotTrigger();
