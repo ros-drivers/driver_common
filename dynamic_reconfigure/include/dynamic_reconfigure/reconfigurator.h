@@ -87,16 +87,16 @@ template <class ConfigManipulator>
 class Reconfigurator : public AbstractReconfigurator
 {
 public:
-  Reconfigurator(ros::NodeHandle &nh) : node_handle_(nh)
+  Reconfigurator(const ros::NodeHandle &nh) : node_handle_(nh)
   {
     config_ = ConfigManipulator::getDefaults();
     ConfigManipulator::readFromParamServer(node_handle_, config_);
     // Write to make sure everything is filled in.
     ConfigManipulator::writeToParamServer(node_handle_, config_);
     
-    static const std::string get_config = "~get_configuration";
+    static const std::string get_config = "get_configuration";
     get_service_ = node_handle_.advertiseService(get_config, &Reconfigurator<ConfigManipulator>::getConfigService, this);
-    static const std::string set_config = "~set_configuration";
+    static const std::string set_config = "set_configuration";
     set_service_ = node_handle_.advertiseService(set_config, &Reconfigurator<ConfigManipulator>::setConfigService, this);
   }
 

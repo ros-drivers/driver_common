@@ -229,13 +229,13 @@ class ParameterGenerator:
             # We introduce tmp_name because bool is not supported in a .msg file.
             if param['type'] == 'bool':
                 self.appendline(writeparam, "bool tmp_$name = config.$name;", param)
-                self.appendline(writeparam, "nh.setParam(\"~$name\", tmp_$name);", param)
+                self.appendline(writeparam, "nh.setParam(\"$name\", tmp_$name);", param)
                 self.appendline(readparam, "bool tmp_$name = config.$name;", param)
-                self.appendline(readparam, "nh.getParam(\"~$name\", tmp_$name, true);", param)
+                self.appendline(readparam, "nh.getParam(\"$name\", tmp_$name, true);", param)
                 self.appendline(readparam, "config.$name = tmp_$name;", param)
             else:
-                self.appendline(writeparam, "nh.setParam(\"~$name\", config.$name);", param)
-                self.appendline(readparam, "nh.getParam(\"~$name\", config.$name, true);", param)
+                self.appendline(writeparam, "nh.setParam(\"$name\", config.$name);", param)
+                self.appendline(readparam, "nh.getParam(\"$name\", config.$name, true);", param)
         defminmax = string.join(defminmax, '\n')
         changelvl = string.join(changelvl, '\n')
         writeparam = string.join(writeparam, '\n')

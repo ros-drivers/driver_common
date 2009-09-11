@@ -377,7 +377,7 @@ public:
     return 0; /// @todo Work on return type here.
   }
   
-  DriverNode(ros::NodeHandle &nh) : node_handle_(nh), self_test_(this, node_handle_), diagnostic_(node_handle_), reconfigurator_(node_handle_)
+  DriverNode(ros::NodeHandle &nh) : node_handle_(nh), self_test_(this, node_handle_), diagnostic_(node_handle_), reconfigurator_(ros::NodeHandle("~"))
   {
     num_subscribed_topics_ = 0; /// @fixme this variable is hokey.
     exit_status_ = 0;

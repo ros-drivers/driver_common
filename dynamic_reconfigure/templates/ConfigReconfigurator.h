@@ -83,10 +83,10 @@ namespace ${pkgname}
     }
 
     /**
-     * Reads configuration from the configuration server in the ~
-     * namespace. Undefined values are left unmodified.
+     * Reads configuration from the configuration server.
+     * Undefined values are left unmodified.
      *
-     * \param nh ros::NodeHandle through which to access the name server
+     * \param nh ros::NodeHandle through which to access the name server.
      * \param config Reference to the configuration to modify
      */
     static void readFromParamServer(ros::NodeHandle &nh, ConfigType &config)
