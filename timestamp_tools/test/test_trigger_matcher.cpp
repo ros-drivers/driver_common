@@ -2,17 +2,17 @@
 #include <gtest/gtest.h>
 #include <queue>
 
-class Checker
+class QueuedChecker
 {
   std::queue< std::pair<double, int> > incoming_;
 
 public:  
-  timestamp_tools::TriggerMatcher<int> tm;
+  timestamp_tools::QueuedTriggerMatcher<int> tm;
   
-  Checker() : tm(1, 10, 5)
+  QueuedChecker() : tm(1, 10, 5)
   {
     tm.setTrigDelay(0.2);
-    timestamp_tools::TriggerMatcher<int>::MatchCallback bound_cb = boost::bind(&Checker::callback, this, _1, _2);
+    timestamp_tools::QueuedTriggerMatcher<int>::MatchCallback bound_cb = boost::bind(&QueuedChecker::callback, this, _1, _2);
     tm.setMatchCallback(bound_cb);
                   
     // Get it into the permanent regime with an empty queue.
@@ -22,14 +22,15 @@ public:
     expectEmpty(1);
     tm.triggerCallback(2);
     expectHead(0.2, 1);
+    expectEmpty(2);
     tm.dataCallback(3, 2);
     expectHead(2.2, 2);
-
+    expectEmpty(3);
   }
 
   void expectEmpty(double time)
   {
-    EXPECT_TRUE(incoming_.empty()) << "Checker queue not empty at time " << time 
+    EXPECT_TRUE(incoming_.empty()) << "QueuedChecker queue not empty at time " << time 
       << " contains " << incoming_.front().first << ", " << incoming_.front().second;
   }
 
@@ -37,7 +38,7 @@ public:
   {
     if (incoming_.empty())
     {
-      ADD_FAILURE() << "Checker queue empty when checking " << time << ", " << data;
+      ADD_FAILURE() << "QueuedChecker queue empty when checking " << time << ", " << data;
       return;
     }
 
@@ -49,15 +50,15 @@ public:
     incoming_.pop();
   }
 
-  void callback(const ros::Time &time, const boost::shared_ptr<int> &data)
+  void callback(const ros::Time &time, const boost::shared_ptr<int const> &data)
   {
     incoming_.push(std::pair<double, int>(time.toSec(), *data));
   }
 };
 
-TEST(TriggerMatcher, BasicFunctionality)
+TEST(QueuedTriggerMatcher, BasicFunctionality)
 {
-  Checker c;
+  QueuedChecker c;
   
 // Data gets delayed...
   c.tm.triggerCallback(4);
@@ -68,10 +69,13 @@ TEST(TriggerMatcher, BasicFunctionality)
   c.expectEmpty(8);
   c.tm.dataCallback(5, 3);
   c.expectHead(4.2, 3);
+  c.expectEmpty(5);
   c.tm.dataCallback(7, 4);
   c.expectHead(6.2, 4);
+  c.expectEmpty(7);
   c.tm.dataCallback(9, 5);
   c.expectHead(8.2, 5);
+  c.expectEmpty(9);
 
 // Timestamp gets delayed...
   c.tm.dataCallback(11, 6);
@@ -82,17 +86,56 @@ TEST(TriggerMatcher, BasicFunctionality)
   c.expectEmpty(15);
   c.tm.triggerCallback(10);
   c.expectHead(10.2, 6);
+  c.expectEmpty(10);
   c.tm.triggerCallback(12);
   c.expectHead(12.2, 7);
+  c.expectEmpty(12);
   c.tm.triggerCallback(14);
   c.expectHead(14.2, 8);
-
-  c.expectEmpty(1000);
+  c.expectEmpty(14);
 }
 
-TEST(TriggerMatcher, MissingTrigger)
+TEST(QueuedTriggerMatcher, TestReset)
 {
-  Checker c;
+  QueuedChecker c;
+
+  c.tm.triggerCallback(4);
+  c.expectEmpty(4);
+  c.tm.reset();
+  c.tm.dataCallback(5, 3);
+  c.expectEmpty(5);
+  c.tm.triggerCallback(6);
+  c.expectEmpty(6);
+  c.tm.dataCallback(7, 4);
+  c.expectEmpty(7);
+  c.tm.triggerCallback(8);
+  c.expectHead(6.2, 4);
+  c.expectEmpty(8);
+  c.tm.dataCallback(9, 5);
+  c.expectHead(8.2, 5);
+  c.expectEmpty(9);
+
+  c.tm.dataCallback(5, 3);
+  c.expectEmpty(5);
+  c.tm.reset();
+  c.expectEmpty(5.1);
+  c.tm.triggerCallback(4);
+  c.expectEmpty(4);
+  c.tm.triggerCallback(6);
+  c.expectEmpty(6);
+  c.tm.dataCallback(7, 4);
+  c.expectEmpty(7);
+  c.tm.triggerCallback(8);
+  c.expectHead(6.2, 4);
+  c.expectEmpty(8);
+  c.tm.dataCallback(9, 5);
+  c.expectHead(8.2, 5);
+  c.expectEmpty(9);
+}
+
+TEST(QueuedTriggerMatcher, MissingTrigger)
+{
+  QueuedChecker c;
   
   // Miss a trigger at time 4...
   c.tm.triggerCallback(6);
@@ -103,15 +146,15 @@ TEST(TriggerMatcher, MissingTrigger)
   c.expectEmpty(5);
   c.tm.dataCallback(7, 4);
   c.expectHead(6.2, 4);
+  c.expectEmpty(7);
   c.tm.dataCallback(9, 5);
   c.expectHead(8.2, 5);
-  
-  c.expectEmpty(1000);
+  c.expectEmpty(9);
 }
 
-TEST(TriggerMatcher, MissingData)
+TEST(QueuedTriggerMatcher, MissingData)
 {
-  Checker c;
+  QueuedChecker c;
   
   // Miss data at time 5...
   c.tm.triggerCallback(4);
@@ -126,19 +169,21 @@ TEST(TriggerMatcher, MissingData)
   c.expectEmpty(12);
   c.tm.dataCallback(7, 4);
   c.expectHead(4.2, 4); // Bad
+  c.expectEmpty(7);
   c.tm.dataCallback(9, 5);
   c.expectHead(8.2, 5); // Recovered
+  c.expectEmpty(9);
   c.tm.dataCallback(11, 6);
   c.expectHead(10.2, 6); 
+  c.expectEmpty(11);
   c.tm.dataCallback(13, 7);
   c.expectHead(12.2, 7); 
-  
-  c.expectEmpty(1000);
+  c.expectEmpty(13);
 }
 
-TEST(TriggerMatcher, MissingDataZeroLateTolerance)
+TEST(QueuedTriggerMatcher, MissingDataZeroLateTolerance)
 {
-  Checker c;
+  QueuedChecker c;
   
   c.tm.setLateDataCountAllowed(0);
 
@@ -157,19 +202,21 @@ TEST(TriggerMatcher, MissingDataZeroLateTolerance)
   c.expectEmpty(14);
   c.tm.dataCallback(5, 4);
   c.expectHead(4.2, 4); 
+  c.expectEmpty(5);
   c.tm.dataCallback(9, 5);
   c.expectHead(8.2, 5); // Recovered
+  c.expectEmpty(9);
   c.tm.dataCallback(11, 6);
   c.expectHead(10.2, 6); 
+  c.expectEmpty(11);
   c.tm.dataCallback(13, 7);
   c.expectHead(12.2, 7); 
-  
-  c.expectEmpty(1000);
+  c.expectEmpty(13);
 }
 
-TEST(TriggerMatcher, TriggerQueueOverflow)
+TEST(QueuedTriggerMatcher, TriggerQueueOverflow)
 {
-  Checker c;
+  QueuedChecker c;
 
   double trig_time = 4;
   for (int i = 0; i < 15; i++)
@@ -180,13 +227,12 @@ TEST(TriggerMatcher, TriggerQueueOverflow)
   }
   c.tm.dataCallback(15, 15);
   c.expectHead(14.2, 15); // Previous triggers were dropped
-
-  c.expectEmpty(1000);
+  c.expectEmpty(15);
 }
 
-TEST(TriggerMatcher, DataQueueOverflow)
+TEST(QueuedTriggerMatcher, DataQueueOverflow)
 {
-  Checker c;
+  QueuedChecker c;
 
   double data_time = 5;
   for (int i = 0; i < 10; i++)
@@ -197,11 +243,68 @@ TEST(TriggerMatcher, DataQueueOverflow)
   }
   c.tm.triggerCallback(14);
   c.expectHead(14.2, 15); // Previous triggers were dropped
-
-  c.expectEmpty(1000);
+  c.expectEmpty(14);
 }
 
+TEST(TriggerMatcher, TimeoutCheck)
+{
+  timestamp_tools::TriggerMatcher tm(1, 10);
+
+  // If this does not return because the timestamp
+  EXPECT_EQ(timestamp_tools::TriggerMatcher::RetryLater, tm.getTimestampBlocking(ros::Time(0), 0.5));
+}
+
+TEST(TriggerMatcher, TriggerFirstCheck)
+{
+  timestamp_tools::TriggerMatcher tm(1, 10);
+
+  tm.triggerCallback(1);
+  tm.triggerCallback(2);
+  tm.triggerCallback(3);
+
+  EXPECT_EQ(ros::Time(1), tm.getTimestampBlocking(ros::Time(1.5), 1)) << "Testing getTimestampBlocking without timeout";
+  EXPECT_EQ(ros::Time(2), tm.getTimestampBlocking(ros::Time(2.5))) << "Testing getTimestampBlocking with timeout";
+}
+
+TEST(TriggerMatcher, TestReset)
+{
+  timestamp_tools::TriggerMatcher tm(1, 10);
+
+  tm.triggerCallback(1);
+  tm.triggerCallback(2);
+  tm.reset();
+  tm.triggerCallback(3);
+  tm.triggerCallback(4);
+
+  EXPECT_EQ(timestamp_tools::TriggerMatcher::DropData, tm.getTimestampBlocking(ros::Time(1.5), 1)) << "Testing getTimestampBlocking without timeout";
+  EXPECT_EQ(ros::Time(3), tm.getTimestampBlocking(ros::Time(3.5))) << "Testing getTimestampBlocking with timeout";
+}
+
+
+void AsyncGenTrigger(timestamp_tools::TriggerMatcher *tm, double time, int delay)
+{
+  sleep(delay);
+  tm->triggerCallback(time);
+}
+
+TEST(TriggerMatcher, DataFirstCheck)
+{
+  timestamp_tools::TriggerMatcher tm(1, 10);
+
+  tm.triggerCallback(5);
+  boost::function<void(void)> agt = boost::bind(&AsyncGenTrigger, &tm, 7.0, 2);
+  boost::thread trigger_thread(agt);
+
+  EXPECT_EQ(timestamp_tools::TriggerMatcher::RetryLater, tm.getTimestampBlocking(ros::Time(5.5), 0.5)) << "getTimestampBlocking should have timed out or test computer is VERY slow";
+  EXPECT_EQ(ros::Time(5), tm.getTimestampBlocking(ros::Time(6.0))) << "getTimestampBlocking should have received timestamp";
+
+  trigger_thread.join();
+}
+
+
 int main(int argc, char **argv){
+  for (int i = 0; i < argc; i++)
+    printf("%s\n", argv[i]);
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
