@@ -146,7 +146,7 @@ public:
     triggerCallback(ros::Time(stamp));
   }
 
-  void triggerCallback(const roslib::HeaderPtr &msg)
+  void triggerCallback(const roslib::HeaderConstPtr &msg)
   {
     triggerCallback(msg->stamp);
   }
