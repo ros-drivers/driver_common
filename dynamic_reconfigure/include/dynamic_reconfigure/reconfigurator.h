@@ -115,6 +115,7 @@ private:
   bool getConfigService(typename ConfigManipulator::GetService::Request &req, 
       typename ConfigManipulator::GetService::Response &rsp)
   {
+    rsp.config = config_;
     rsp.defaults = ConfigManipulator::getDefaults();
     rsp.min = ConfigManipulator::getMin();
     rsp.max = ConfigManipulator::getMax();
