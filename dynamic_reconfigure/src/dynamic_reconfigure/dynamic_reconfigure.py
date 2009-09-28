@@ -41,23 +41,27 @@ import rosservice
 class DynamicReconfigure:
     def __init__(self, name, timeout = None):
         self.name = name
-        self.get_service = self.get_service_proxy('get_configuration', timeout)
-        self.set_service = self.get_service_proxy('set_configuration', timeout)
+        (self.get_service, self.get_service_class) = self.get_service_proxy('get_configuration', timeout)
+        (self.set_service, self.set_service_class) = self.get_service_proxy('set_configuration', timeout)
     
     def get_service_proxy(self, suffix, timeout):
         service_name = rospy.resolve_name(self.name + '/' + suffix)
-        print "waiting for service", service_name
+        #print "waiting for service", service_name
         rospy.wait_for_service(service_name, timeout)
-        print service_name
+        #print service_name
         service_class = rosservice.get_service_class_by_name(service_name)
-        print service_class
-        return rospy.ServiceProxy(service_name, service_class)
+        #print service_class
+        return rospy.ServiceProxy(service_name, service_class), service_class
 
     def get_configuration(self):
         return self.get_service()
 
     def update_configuration(self, name, value):
-        config = getConfiguration()
-        config.__set_attr__(name, value)
-        setConfiguration(config)
+        config = self.get_configuration().config
+        #print
+        #print dir(config.config)
+        #config.__dict__[name] = value
+        config.__setattr__(name, value)
+        req = self.set_service_class._request_class(config)
+        print self.set_service(req).config
 
