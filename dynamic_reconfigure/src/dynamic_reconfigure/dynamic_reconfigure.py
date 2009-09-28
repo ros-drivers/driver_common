@@ -56,12 +56,13 @@ class DynamicReconfigure:
     def get_configuration(self):
         return self.get_service()
 
-    def update_configuration(self, name, value):
+    def update_configuration(self, dict):
         config = self.get_configuration().config
         #print
         #print dir(config.config)
         #config.__dict__[name] = value
-        config.__setattr__(name, value)
+        for k,v in dict.items():
+            config.__setattr__(k, v)
         req = self.set_service_class._request_class(config)
         print self.set_service(req).config
 
