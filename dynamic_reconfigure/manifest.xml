@@ -9,6 +9,8 @@
   <url>http://www.ros.org/wiki/dynamic_reconfigure</url>
   <depend package="rospy" />
   <depend package="roscpp" />
+  <depend package="rosservice" />
+  <rosdep name="wxpython" />
   <export>
         <cpp cflags="-I${prefix}/include -I${prefix}/msg/cpp"/>
   </export>
