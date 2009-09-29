@@ -1,14 +1,19 @@
 <package>
   <description brief="Classes to facilitate timestamping of sensor data.">
-    This package provides:
+    <tt>timestamp_tools</tt> provides:
     
-    - a PeriodicTimestampMinFilter, which takes a stream of timestamps with
+    <ul>
+    <li>
+      a <tt>PeriodicTimestampMinFilter</tt>, which takes a stream of timestamps with
     a known period that may occasionally have been arbitrarily delayed, and
     outputs a stream of timestamps in which the arbitrary delays have been
     filtered out using a min filter.
-    
-    - a TriggerMatcher, that matches a stream of data structures with
+    </li>
+    <li>
+      a <tt>TriggerMatcher</tt>, that matches a stream of data structures with
     approximate timestamps to a stream of exact timestamps.
+    </li>
+    </ul>
 
   </description>
   <author>Blaise Gassend</author>
