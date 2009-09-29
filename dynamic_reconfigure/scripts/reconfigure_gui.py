@@ -39,15 +39,37 @@ import rospy
 import dynamic_reconfigure.dynamic_reconfigure as dynamic_reconfigure
 import wx
 
-class DynamicReconfigurePanel(wx.Frame):
-    def __init__(self, parent, id, title):
-        wx.Frame.__init__(self, parent, id, title, size=(200,100))
-        self.control = wx.TextCtrl(self, 1, style=wx.TE_MULTILINE)
-        self.Show(True)
+class DynamicReconfigureBoolean(wx.CheckBox):
+    def __init__(self, parent, name, value, reconfigurator):
+        wx.CheckBox.__init__(self, parent, wx.ID_ANY)
+        self.SetValue(value)
+
+class DynamicReconfigureString(wx.TextCtrl):
+    def __init__(self, parent, name, value, reconfigurator):
+        wx.TextCtrl.__init__(self, parent, wx.ID_ANY)
+        self.SetValue(value)
+
+class DynamicReconfigurePanel(wx.Panel):
+    def __init__(self, parent, node):
+        wx.Panel.__init__(self, parent, wx.ID_ANY)
+        reconf = dynamic_reconfigure.DynamicReconfigure(node)
+        config = reconf.Get_configuration()
+        
+        dir(config)
+        exit(0)
+        sizer = wx.GridSizer(0, 2)
+        sizer.Add(wx.StaticText(self, wx.ID_ANY, 'fyo'))
+        sizer.Add(DynamicReconfigureBoolean(self, 'foo', True, None))
+        sizer.Add(wx.StaticText(self, wx.ID_ANY, 'bar'))
+        sizer.Add(DynamicReconfigureString(self, 'bar', 'toto', None))
+
+        self.SetSizer(sizer)
+        #self.Center()
 
 class MainWindow(wx.Frame):
-    def __init__(self, parent, id, title):
-        wx.Frame.__init__(self, parent, wx.ID_ANY, title)
+    def __init__(self, node):
+        wx.Frame.__init__(self, None, wx.ID_ANY, 'Reconfigure '+node)
+        print node
         self.filemenu = wx.Menu()
         self.filemenu.Append(wx.ID_EXIT, "E&xit"," Exit the program")
         self.menubar = wx.MenuBar()
@@ -57,8 +79,7 @@ class MainWindow(wx.Frame):
         
         sizer = wx.BoxSizer()
         self.SetSizer(sizer)
-        sizer.Add(GripperPressurePanel(self, 'pressure/r_gripper_motor'), 1, wx.EXPAND)
-        
+        sizer.Add(DynamicReconfigurePanel(self, node))
         #self.SetMaxSize(wx.Size(1500,1500))
 
     def on_exit(self, e):
@@ -68,6 +89,12 @@ class MainWindow(wx.Frame):
         self.Raise()
     
 if __name__ == '__main__':
+    argv = rospy.myargv()
+    if (len(argv) != 2):
+        print "usage: reconfigure_gui.py <node_name>"
+        exit(1)
+    rospy.init_node('reconfigure_gui', anonymous = True)
     app = wx.PySimpleApp()
-    frame=DynamicReconfigurePanel(None, wx.ID_ANY, 'Small editor')
+    frame=MainWindow(argv[1])
+    frame.Show()
     app.MainLoop()

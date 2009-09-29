@@ -46,11 +46,11 @@ class DynamicReconfigure:
     
     def get_service_proxy(self, suffix, timeout):
         service_name = rospy.resolve_name(self.name + '/' + suffix)
-        #print "waiting for service", service_name
+        print "waiting for service", service_name
         rospy.wait_for_service(service_name, timeout)
-        #print service_name
+        print service_name
         service_class = rosservice.get_service_class_by_name(service_name)
-        #print service_class
+        print service_class
         return rospy.ServiceProxy(service_name, service_class), service_class
 
     def get_configuration(self):
