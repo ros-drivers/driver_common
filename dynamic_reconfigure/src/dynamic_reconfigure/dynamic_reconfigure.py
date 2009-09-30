@@ -64,6 +64,6 @@ class DynamicReconfigure:
         for k,v in dict.items():
             config.__setattr__(k, v)
         req = self.set_service_class._request_class(config)
-        #print self.set_service(req).config
-        return req
+        resp = self.set_service(req).config
+        return resp
 

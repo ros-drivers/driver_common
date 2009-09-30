@@ -48,7 +48,7 @@ class DynamicReconfigureBoolean(wx.CheckBox):
 
     def update(self, event):
         print self.name, self.GetValue()
-        rslt = self.GetParent().reconf.update_configuration({ self.name:self.GetValue() }).config
+        rslt = self.GetParent().reconf.update_configuration({ self.name:self.GetValue() })
         self.SetValue(rslt.__getattribute__(self.name))
 
 class DynamicReconfigureString(wx.TextCtrl):
@@ -67,7 +67,7 @@ class DynamicReconfigureString(wx.TextCtrl):
         new_value = self.GetValue()
         if self.old_value == new_value:
             return
-        rslt = self.GetParent().reconf.update_configuration({ self.name:new_value }).config
+        rslt = self.GetParent().reconf.update_configuration({ self.name:new_value })
         self.SetValue(rslt.__getattribute__(self.name))
         print rslt
 
