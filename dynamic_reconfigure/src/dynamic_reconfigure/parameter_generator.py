@@ -77,14 +77,9 @@ class ParameterGenerator:
             'bool' : False,
             }
             
-    def __init__(self, pkgname, nodename, name):
+    def __init__(self):
         self.parameters = []
-        self.pkgname = pkgname
-        self.pkgpath = roslib.packages.get_pkg_dir(pkgname)
         self.dynconfpath = roslib.packages.get_pkg_dir("dynamic_reconfigure")
-        self.name = name
-        self.nodename = nodename
-        self.msgname = name+"Config"
 
     def add(self, name, type, level, description, default = None, min = None, max = None):
         if min == None:
@@ -127,7 +122,12 @@ class ParameterGenerator:
         path = os.path.join(self.pkgpath, path)
         self.mkdirabs(path)
 
-    def generate(self):
+    def generate(self, pkgname, nodename, name):
+        self.pkgname = pkgname
+        self.pkgpath = roslib.packages.get_pkg_dir(pkgname)
+        self.name = name
+        self.nodename = nodename
+        self.msgname = name+"Config"
         #print '**************************************************************'
         #print '**************************************************************'
         print Template("Generating reconfiguration files for $name in $pkgname").\
