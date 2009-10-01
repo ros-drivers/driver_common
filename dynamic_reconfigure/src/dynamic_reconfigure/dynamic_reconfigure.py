@@ -38,7 +38,7 @@ import roslib; roslib.load_manifest('dynamic_reconfigure')
 import rospy
 import rosservice
 
-class DynamicReconfigure:
+class DynamicReconfigureClient:
     def __init__(self, name, timeout = None):
         self.name = name
         (self.get_service, self.get_service_class) = self.get_service_proxy('get_configuration', timeout)

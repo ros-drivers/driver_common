@@ -92,7 +92,7 @@ DynamicReconfigureWidget = {
 class DynamicReconfigurePanel(wx.Panel):
     def __init__(self, parent, node):
         wx.Panel.__init__(self, parent, wx.ID_ANY)
-        self.reconf = dynamic_reconfigure.DynamicReconfigure(node)
+        self.reconf = dynamic_reconfigure.DynamicReconfigureClient(node)
         config = self.reconf.get_configuration()
         
         sizer = wx.FlexGridSizer(0, 2)
