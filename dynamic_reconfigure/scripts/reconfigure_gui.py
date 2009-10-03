@@ -38,6 +38,7 @@ import roslib; roslib.load_manifest('dynamic_reconfigure')
 import rospy
 import dynamic_reconfigure.dynamic_reconfigure as dynamic_reconfigure
 import wx
+import unicodedata
 
 class DynamicReconfigureBoolean(wx.CheckBox):
     def __init__(self, parent, name, value, min, max):
@@ -47,7 +48,7 @@ class DynamicReconfigureBoolean(wx.CheckBox):
         self.Bind(wx.EVT_CHECKBOX, self.update)
 
     def update(self, event):
-        print self.name, self.GetValue()
+        #print self.name, self.GetValue()
         rslt = self.GetParent().reconf.update_configuration({ self.name:self.GetValue() })
         self.SetValue(rslt.__getattribute__(self.name))
 
@@ -64,23 +65,40 @@ class DynamicReconfigureString(wx.TextCtrl):
         self.old_value = value
 
     def update(self, event):
-        new_value = self.GetValue()
+        new_value = unicodedata.normalize('NFKD', self.GetValue()).encode('ascii','ignore')
         if self.old_value == new_value:
             return
+        #print self.name, new_value, repr(new_value)
         rslt = self.GetParent().reconf.update_configuration({ self.name:new_value })
         self.SetValue(rslt.__getattribute__(self.name))
-        print rslt
+        #print rslt
 
 class DynamicReconfigureDouble(wx.TextCtrl):
     def __init__(self, parent, name, value, min, max):
         wx.TextCtrl.__init__(self, parent, wx.ID_ANY)
         self.SetValue(str(value))
 
-class DynamicReconfigureInteger(wx.Slider):
+class DynamicReconfigureInteger(wx.Panel):
     def __init__(self, parent, name, value, min, max):
-        wx.Slider.__init__(self, parent, wx.ID_ANY, value, min, max,
-                style = wx.SL_AUTOTICKS | wx.SL_HORIZONTAL | wx.SL_LABELS)
-        print name, value, min, max
+        wx.Panel.__init__(self, parent, wx.ID_ANY)
+        self.min = min
+        self.max = max
+        
+        sizer = wx.BoxSizer()
+        self.slider = wx.Slider(self, wx.ID_ANY, self.SliderValue(value), self.SliderValue(min), 
+            self.SliderValue(max), style = wx.SL_AUTOTICKS | wx.SL_HORIZONTAL)
+        sizer.Add(self.slider, wx.EXPAND)
+        self.text = wx.TextCtrl(self, wx.ID_ANY, style = wx.TE_PROCESS_ENTER)
+        sizer.Add(self.text)
+        #print name, value, min, max
+        self.SetSizer(sizer)
+
+        self.slider.Bind(self.slider_update)
+        self.text.Bind(self.text_update)
+
+    def SliderValue(self, val):
+        return val
+        
 
 DynamicReconfigureWidget = {
         'int8':DynamicReconfigureBoolean,
@@ -97,8 +115,6 @@ class DynamicReconfigurePanel(wx.Panel):
         
         sizer = wx.FlexGridSizer(0, 2)
         sizer.SetFlexibleDirection(wx.BOTH)
-        #sizer.SetFlexibleDirection(wx.HORIZONTAL)
-        #sizer.SetNonFlexibleGrowMode(wx.FLEX_GROWMODE_ALL)
         sizer.AddGrowableCol(1, 1)
         flags = {
                 'int8':wx.ALIGN_LEFT,
@@ -123,7 +139,7 @@ class DynamicReconfigurePanel(wx.Panel):
 class MainWindow(wx.Frame):
     def __init__(self, node):
         wx.Frame.__init__(self, None, wx.ID_ANY, 'Reconfigure '+node)
-        print node
+        #print node
         self.filemenu = wx.Menu()
         self.filemenu.Append(wx.ID_EXIT, "E&xit"," Exit the program")
         self.menubar = wx.MenuBar()
