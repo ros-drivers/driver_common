@@ -42,6 +42,7 @@
 #include <boost/thread.hpp>
 #include <boost/bind.hpp>
 #include <dynamic_reconfigure/SensorLevels.h>
+#include <signal.h>
 
 namespace driver_base
 {
