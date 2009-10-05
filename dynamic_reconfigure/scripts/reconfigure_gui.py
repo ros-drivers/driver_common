@@ -38,7 +38,8 @@ import roslib; roslib.load_manifest('dynamic_reconfigure')
 import rospy
 import dynamic_reconfigure.dynamic_reconfigure as dynamic_reconfigure
 import wx
-import unicodedata
+import unicodedata    
+import math
 
 class DynamicReconfigureBoolean(wx.CheckBox):
     def __init__(self, parent, name, value, min, max):
@@ -73,32 +74,86 @@ class DynamicReconfigureString(wx.TextCtrl):
         self.SetValue(rslt.__getattribute__(self.name))
         #print rslt
 
-class DynamicReconfigureDouble(wx.TextCtrl):
-    def __init__(self, parent, name, value, min, max):
-        wx.TextCtrl.__init__(self, parent, wx.ID_ANY)
-        self.SetValue(str(value))
-
 class DynamicReconfigureInteger(wx.Panel):
     def __init__(self, parent, name, value, min, max):
         wx.Panel.__init__(self, parent, wx.ID_ANY)
+        self.name = name
+        self.value = value
         self.min = min
         self.max = max
         
         sizer = wx.BoxSizer()
-        self.slider = wx.Slider(self, wx.ID_ANY, self.SliderValue(value), self.SliderValue(min), 
-            self.SliderValue(max), style = wx.SL_AUTOTICKS | wx.SL_HORIZONTAL)
+        self.slider = wx.Slider(self, wx.ID_ANY, minValue = self.SliderValue(min), 
+                maxValue = self.SliderValue(max), style = wx.SL_AUTOTICKS | wx.SL_HORIZONTAL)
         sizer.Add(self.slider, wx.EXPAND)
         self.text = wx.TextCtrl(self, wx.ID_ANY, style = wx.TE_PROCESS_ENTER)
         sizer.Add(self.text)
-        #print name, value, min, max
         self.SetSizer(sizer)
 
-        self.slider.Bind(self.slider_update)
-        self.text.Bind(self.text_update)
+        self.slider.Bind(wx.EVT_SCROLL, self.SliderUpdate)
+        self.text.Bind(wx.EVT_TEXT_ENTER, self.TextUpdate)
+        self.text.Bind(wx.EVT_KILL_FOCUS, self.TextUpdate)
 
+        self.UpdateWidgets()
+
+    def ChangeValue(self, new_value):
+        if self.value == new_value:
+            return
+        rslt = self.GetParent().reconf.update_configuration({ self.name:new_value })
+        self.value = rslt.__getattribute__(self.name)
+        self.value = new_value
+        self.UpdateWidgets()
+    
+    def UpdateWidgets(self):
+        print "UpdateWidgets", self.value
+        self.text.SetValue(str(self.value))
+        self.slider.SetValue(self.SliderValue(self.value))
+    
     def SliderValue(self, val):
         return val
         
+    def InvSliderValue(self, val):
+        return val
+
+    def TextValue(self, val):
+        return str(val)
+    
+    def InvTextValue(self, val):
+        return int(val)
+    
+    def InvBoundTextValue(self, val):
+        try:
+            return min(max(InvTextValue(val), self.min), self.max)
+        except:
+            return self.value
+
+    def SliderUpdate(self, event):
+        newvalue = self.InvSliderValue(self.slider.GetValue())
+        self.ChangeValue(newvalue)
+
+    def TextUpdate(self, event):
+        newvalue = self.InvBoundTextValue(self.text.GetValue())
+        self.ChangeValue(newvalue)
+
+class DynamicReconfigureDouble(DynamicReconfigureInteger):
+    def __init__(self, parent, name, value, min, max):
+        self.func = lambda x:math.atan(x)
+        self.ifunc = lambda x:math.tan(x)
+        self.scale = (self.func(max) - self.func(min)) / 100
+        self.offset = self.func(min)
+        DynamicReconfigureInteger.__init__(self, parent, name, value, min, max)
+    
+    def SliderValue(self, val):
+        return round((self.func(val) - self.offset) / self.scale)
+        
+    def InvSliderValue(self, val):
+        return self.ifunc(self.offset + val * self.scale)
+
+    def TextValue(self, val):
+        return str(val)
+
+    def InvTextValue(self, val):
+        return float(val)
 
 DynamicReconfigureWidget = {
         'int8':DynamicReconfigureBoolean,
