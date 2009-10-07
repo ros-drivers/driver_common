@@ -294,5 +294,5 @@ class ParameterGenerator:
             pkgname = self.pkgname, pycfgdata = self.parameters))
         f.close()
 
-        f = open(os.path.join(self.pkgpath, "src", self.pkgname, "cfg", self.name+"Config.py"), 'a')
+        f = open(os.path.join(self.pkgpath, "src", self.pkgname, "cfg", "__init__.py"), 'a')
         f.close()
