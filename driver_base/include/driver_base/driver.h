@@ -82,7 +82,7 @@ public:
 
   virtual std::string getID() = 0;
   
-  boost::mutex mutex_; ///@todo should this be protected?
+  boost::recursive_mutex mutex_; ///@todo should this be protected?
 
   static const state_t CLOSED = 0; // Not connected to the hardware.
   static const state_t OPENED = 1; // Connected to the hardware, ready to start streaming.
@@ -90,7 +90,7 @@ public:
 
   bool goState(state_t target)
   {
-    boost::mutex::scoped_lock(mutex_);
+    boost::recursive_mutex::scoped_lock lock(mutex_);
 
     if (state_ > target)
       return lowerState(target);
@@ -103,7 +103,7 @@ public:
 
   bool raiseState(state_t target)
   {
-    boost::mutex::scoped_lock(mutex_);
+    boost::recursive_mutex::scoped_lock lock(mutex_);
 
     switch (getState())  
     {
@@ -126,7 +126,7 @@ public:
 
   bool lowerState(state_t target)
   {
-    boost::mutex::scoped_lock(mutex_);
+    boost::recursive_mutex::scoped_lock lock(mutex_);
 
     switch (getState())  
     {
@@ -254,14 +254,14 @@ private:
 
   bool tryTransition(state_t target, void (Driver::*transition)())
   {
+    boost::recursive_mutex::scoped_lock lock_(mutex_);
     state_t orig = state_;
     ROS_DEBUG("Trying transition %s from %s to %s.", getTransitionName(transition).c_str(), getStateName(orig).c_str(), getStateName(target).c_str());
-    boost::mutex::scoped_lock(mutex_);
     (this->*transition)();
     bool out = state_ == target;
-    ROS_DEBUG("Transition %s from %s to %s %s.", getTransitionName(transition).c_str(), getStateName(orig).c_str(), getStateName(target).c_str(), out ? "succeeded" : "failed");
     if (out && transition == &Driver::doOpen)
       postOpenHook();
+    ROS_DEBUG("Transition %s from %s to %s %s.", getTransitionName(transition).c_str(), getStateName(orig).c_str(), getStateName(target).c_str(), out ? "succeeded" : "failed");
     return out;
   }
 };

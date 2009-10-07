@@ -117,7 +117,7 @@ private:
   {
     /// @todo Move this into the Driver class?
     ROS_DEBUG("Reconfigure called at level %x.", level);
-    boost::mutex::scoped_lock(driver_.mutex_);
+    boost::recursive_mutex::scoped_lock lock(driver_.mutex_);
     
     drv_state_t orig_state = driver_.getState();
   
@@ -174,7 +174,7 @@ private:
       }
 
       {
-        boost::mutex::scoped_lock(diagnostics_lock_);
+        boost::mutex::scoped_lock lock(diagnostics_lock_);
         diagnostic_.update();
         self_test_.checkTest();
       }

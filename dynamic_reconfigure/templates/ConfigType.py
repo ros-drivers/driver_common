@@ -48,13 +48,13 @@ config_description = ${pycfgdata}
 
 min = MsgClass();
 max = MsgClass();
-default = MsgClass();
+defaults = MsgClass();
 level = MsgClass();
 all_level = 0
 
 for param in config_description:
     min.__setattr__(param['name'], param['min'])
     max.__setattr__(param['name'], param['max'])
-    default.__setattr__(param['name'], param['default'])
+    defaults.__setattr__(param['name'], param['default'])
     level.__setattr__(param['name'], param['level'])
     all_level = all_level | param['level']
