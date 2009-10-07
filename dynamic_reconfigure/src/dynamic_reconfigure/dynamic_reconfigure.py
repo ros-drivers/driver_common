@@ -68,3 +68,46 @@ class DynamicReconfigureClient:
         resp = self.set_service(req).config
         return resp
 
+class DynamicReconfigureServer:
+    def __init__(self, type, callback, namespace = "~"):
+        self.type = type
+        self.callback = callback
+        self.get_service = rospy.Service(namespace+'/get_configuration', type.GetClass, self.get_callback)
+        self.set_service = rospy.Service(namespace+'/set_configuration', type.SetClass, self.set_callback)
+        self.config = type.default
+        self.change_config(self.config, type.all_level)
+
+    def change_config(self, config, level):
+        self.config = self.callback(config, level)
+        return self.config
+   
+    def calc_level(config1, config2):
+        level = 0
+        for param in type.config_description:
+            if config1.__get_attributes(param['name']) != config2.__get_attributes(param['name']):
+                level = level | param['level']
+        return level
+
+    def clamp(config): 
+        for param in config_description: 
+            maxval = max.__get_attributes__(param['name']) 
+            minval = min.__get_attributes__(param['name']) 
+            val = config.__get_attributes__(param['name'])  
+            if val > maxval: 
+                config.__setattribute__(param['name'], maxval) 
+            elif val < minval: 
+                config.__setattribute__(param['name'], minval) 
+
+    def get_callback(self, req):
+        resp = type.GetClass._response_class()
+        resp.max = self.type.max
+        resp.min = self.type.min
+        resp.default = self.type.default
+        resp.config = self.config
+        return resp
+
+    def set_callback(self, req):
+        clamp(req.config)
+        return self.change_config(req.config, self.calc_level(req.config, self.config))
+
+

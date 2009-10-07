@@ -140,6 +140,7 @@ class ParameterGenerator:
         self.generategetsrv()
         self.generatedoc()
         self.generateusage()
+        self.generatepy()
 
     def generatedoc(self):
         self.mkdir("dox")
@@ -205,7 +206,7 @@ class ParameterGenerator:
         # Read the configuration manipulator template and insert line numbers and file name into template.
         templatefile = os.path.join(self.dynconfpath, "templates", "ConfigReconfigurator.h")
         templatelines = []
-        templatefilesafe = templatefile.replace('aa', 'bb') # line directive does backslash expansion.
+        templatefilesafe = templatefile.replace('\\', '\\\\') # line directive does backslash expansion.
         curline = 1
         f = open(templatefile)
         for line in f:
@@ -276,4 +277,22 @@ class ParameterGenerator:
         print >> f, self.msgname, "config", "# Requested node configuration."
         print >> f, "---"        
         print >> f, self.msgname, "config", "# What the node's configuration was actually set to."
+        f.close()
+    
+    def generatepy(self):
+        # Read the configuration manipulator template and insert line numbers and file name into template.
+        templatefile = os.path.join(self.dynconfpath, "templates", "ConfigType.py")
+        templatelines = []
+        f = open(templatefile)
+        template = f.read()
+        f.close()
+        
+        # Write the configuration manipulator.
+        self.mkdir(os.path.join("src", self.pkgname, "cfg"))
+        f = open(os.path.join(self.pkgpath, "src", self.pkgname, "cfg", self.name+"Config.py"), 'w')
+        f.write(Template(template).substitute(name = self.name, 
+            pkgname = self.pkgname, pycfgdata = self.parameters))
+        f.close()
+
+        f = open(os.path.join(self.pkgpath, "src", self.pkgname, "cfg", self.name+"Config.py"), 'a')
         f.close()
