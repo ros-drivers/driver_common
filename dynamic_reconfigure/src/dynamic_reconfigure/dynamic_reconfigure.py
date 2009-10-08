@@ -71,14 +71,28 @@ class DynamicReconfigureClient:
 class DynamicReconfigureServer:
     def __init__(self, type, callback):
         self.type = type
+        self.config = type.defaults
+        self.copy_from_parameter_server()
         self.callback = callback
         self.get_service = rospy.Service('~get_configuration', type.GetClass, self.get_callback)
         self.set_service = rospy.Service('~set_configuration', type.SetClass, self.set_callback)
-        self.config = type.defaults
+        self.clamp(self.config) 
         self.change_config(self.config, type.all_level)
+
+    def copy_from_parameter_server(self):
+        for param in self.type.config_description:
+            try:
+                self.config.__setattr__(param['name'],rospy.get_param("~"+param['name']))
+            except KeyError:
+                pass
+
+    def copy_to_parameter_server(self):
+        for param in self.type.config_description:
+            rospy.set_param("~"+param['name'], self.config.__getattribute__(param['name']))
 
     def change_config(self, config, level):
         self.config = self.callback(config, level)
+        self.copy_to_parameter_server()
         return self.config
    
     def calc_level(self, config1, config2):

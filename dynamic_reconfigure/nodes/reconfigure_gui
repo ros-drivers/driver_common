@@ -37,6 +37,7 @@
 import roslib; roslib.load_manifest('dynamic_reconfigure')
 import rospy
 import dynamic_reconfigure.dynamic_reconfigure as dynamic_reconfigure
+import threading
 import wx
 import unicodedata    
 import math
@@ -105,7 +106,7 @@ class DynamicReconfigureInteger(wx.Panel):
         self.UpdateWidgets()
     
     def UpdateWidgets(self):
-        print "UpdateWidgets", self.value
+        #print "UpdateWidgets", self.value
         self.text.SetValue(str(self.value))
         self.slider.SetValue(self.SliderValue(self.value))
     
@@ -123,8 +124,10 @@ class DynamicReconfigureInteger(wx.Panel):
     
     def InvBoundTextValue(self, val):
         try:
-            return min(max(InvTextValue(val), self.min), self.max)
-        except:
+            return min(max(self.InvTextValue(val), self.min), self.max)
+        except Exception, e:
+            #print e
+            #print "InvTextValue failed"
             return self.value
 
     def SliderUpdate(self, event):
@@ -133,6 +136,7 @@ class DynamicReconfigureInteger(wx.Panel):
 
     def TextUpdate(self, event):
         newvalue = self.InvBoundTextValue(self.text.GetValue())
+        #print "TextUpdate", self.text.GetValue(), self.min, self.max
         self.ChangeValue(newvalue)
 
 class DynamicReconfigureDouble(DynamicReconfigureInteger):
@@ -218,9 +222,13 @@ if __name__ == '__main__':
     if (len(argv) != 2):
         print "usage: reconfigure_gui.py <node_name>"
         exit(1)
-    rospy.init_node('reconfigure_gui', anonymous = True)
     app = wx.PySimpleApp()
+    rospy.init_node('reconfigure_gui', anonymous = True)
     frame=MainWindow(argv[1])
     frame.Show()
     frame.SetMinSize(frame.GetEffectiveMinSize())
-    app.MainLoop()
+    try:
+        app.MainLoop()
+    except KeyboardInterrupt, e:
+        pass
+    print "exiting"
