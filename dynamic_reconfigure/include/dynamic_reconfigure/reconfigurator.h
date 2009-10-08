@@ -125,9 +125,12 @@ private:
   bool setConfigService(typename ConfigManipulator::SetService::Request &req, 
       typename ConfigManipulator::SetService::Response &rsp)
   {
-    int level = ConfigManipulator::getChangeLevel(req.config, config_);
+    class ConfigManipulator::ConfigType new_config = req.config;
+    ConfigManipulator::clamp(new_config);
+    int level = ConfigManipulator::getChangeLevel(new_config, config_);
 
-    setConfig(req.config);
+    
+    setConfig(new_config);
 
     // We expect config_ to be read, and possibly written during the
     // callback.
