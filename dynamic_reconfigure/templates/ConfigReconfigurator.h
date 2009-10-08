@@ -111,6 +111,7 @@ $changelvl
 
     static void clamp(ConfigType &config)
     {
+$clamp
 #line ${linenum} "${filename}"
     }
   

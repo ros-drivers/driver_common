@@ -222,11 +222,15 @@ class ParameterGenerator:
         writeparam = []
         changelvl = []
         defminmax = []
+        clamp = ["initialize();"]
         for param in self.parameters:
             self.appendline(defminmax, "min.$name = $v;", param, "min")
             self.appendline(defminmax, "max.$name = $v;", param, "max")
             self.appendline(defminmax, "defaults.$name = $v;", param, "default")
             self.appendline(changelvl, "if (config1.$name != config2.$name) changelvl |= $level;", param)
+            if param['type'] != 'str':
+                self.appendline(clamp, "if (config.$name > max.$name) config.$name = max.$name;", param)
+                self.appendline(clamp, "if (config.$name < min.$name) config.$name = min.$name;", param)
             # We introduce tmp_name because bool is not supported in a .msg file.
             if param['type'] == 'bool':
                 self.appendline(writeparam, "bool tmp_$name = config.$name;", param)
@@ -239,11 +243,12 @@ class ParameterGenerator:
                 self.appendline(readparam, "nh.getParam(\"$name\", config.$name, true);", param)
         defminmax = string.join(defminmax, '\n')
         changelvl = string.join(changelvl, '\n')
+        clamp = string.join(clamp, '\n')
         writeparam = string.join(writeparam, '\n')
         readparam = string.join(readparam, '\n')
         f.write(Template(template).substitute(uname=self.name.upper(), name = self.name, 
             pkgname = self.pkgname, readparam = readparam, writeparam = writeparam, 
-            changelvl = changelvl, defminmax = defminmax))
+            changelvl = changelvl, clamp = clamp, defminmax = defminmax))
         f.close()
 
     def msgtype(self, type):
