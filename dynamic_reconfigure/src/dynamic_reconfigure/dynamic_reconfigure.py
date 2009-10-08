@@ -38,6 +38,18 @@ import roslib; roslib.load_manifest('dynamic_reconfigure')
 import rospy
 import rosservice
 
+def find_reconfigure_services():
+    services = rosservice.get_service_list()
+    getters = set()
+    setters = set()
+    for i in range(0, len(services)):
+        ## @todo This check can be fooled, but will be sufficient for now.
+        if services[i].endswith('/get_configuration'):
+            getters.add(services[i][0:-18])
+        if services[i].endswith('/set_configuration'):
+            setters.add(services[i][0:-18])
+    return list(getters & setters)
+
 class DynamicReconfigureClient:
     def __init__(self, name, timeout = None):
         self.name = name
