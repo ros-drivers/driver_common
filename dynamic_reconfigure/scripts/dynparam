@@ -62,7 +62,7 @@ def get_params(node):
       out[s] = config.__getattribute__(s)
     return out
 
-def set_params(node, file, params):
+def set_params(node, params):
     client = dynamic_reconfigure.DynamicReconfigureClient(node)
     config = client.update_configuration(params)
 
@@ -74,11 +74,8 @@ def do_list():
 def do_set():
 		print "Not implemented yet."
 
-def do_load():
-		print "Not implemented yet."
-
 def do_get():
-    parser = OptionParser(usage="usage: %prog gete [options] parameter", prog=NAME)
+    parser = OptionParser(usage="usage: %prog get [options] node", prog=NAME)
     options, args = parser.parse_args(sys.argv[2:])
 
     if len(args) == 0:
@@ -91,7 +88,7 @@ def do_get():
     print get_params(node) 
 
 def do_dump():
-    parser = OptionParser(usage="usage: %prog gete [options] parameter", prog=NAME)
+    parser = OptionParser(usage="usage: %prog dump [options] node file", prog=NAME)
     options, args = parser.parse_args(sys.argv[2:])
 
     if len(args) == 0:
@@ -106,6 +103,24 @@ def do_dump():
 
     f = open(file, 'w')
     print >> f, get_params(node)
+    f.close()
+
+def do_load():
+    parser = OptionParser(usage="usage: %prog load [options] node file", prog=NAME)
+    options, args = parser.parse_args(sys.argv[2:])
+
+    if len(args) == 0:
+        parser.error("invalid arguments. Please specify a node name")
+    elif len(args) == 1:
+        parser.error("invalid arguments. Please specify an output file")
+    elif len(args) == 2:
+        node = args[0]
+        file = args[1]
+    else:
+        parser.error("too many arguments")
+
+    f = open(file, 'r')
+    set_params(node, eval(f.read()))
     f.close()
 
 if __name__ == '__main__':
