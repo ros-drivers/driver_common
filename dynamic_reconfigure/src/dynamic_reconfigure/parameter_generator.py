@@ -106,11 +106,9 @@ class ParameterGenerator:
             'srcline' : inspect.currentframe().f_back.f_lineno,
             'srcfile' : inspect.getsourcefile(inspect.currentframe().f_back.f_code),
         }
-        print newparam
         self.check_type(newparam, 'default', self.defval[paramtype])
         self.check_type(newparam, 'max', self.maxval[paramtype])
         self.check_type(newparam, 'min', self.minval[paramtype])
-        print newparam
         self.parameters.append(newparam)
 
     def mkdirabs(self, path, second_attempt = False):
