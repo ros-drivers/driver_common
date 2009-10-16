@@ -76,21 +76,28 @@ class ParameterGenerator:
             'str' : '',
             'bool' : False,
             }
-            
+        
+    def check_type(self, param, field):
+        pytype = { 'str':str, 'int':int, 'double':float, 'bool':bool }[param['type']]
+        value = param[field]
+        if value and pytype != type(value) and (pytype != float or type(value) != int):
+            raise TypeError("'%s' has type %s, but default is %s"%(name, value, repr(value)))
+        param[field] = pytype(value)
+    
     def __init__(self):
         self.parameters = []
         self.dynconfpath = roslib.packages.get_pkg_dir("dynamic_reconfigure")
 
-    def add(self, name, type, level, description, default = None, min = None, max = None):
+    def add(self, name, paramtype, level, description, default = None, min = None, max = None):
         if min == None:
-            min = self.minval[type]
+            min = self.minval[paramtype]
         if max == None:
-            max = self.maxval[type]
+            max = self.maxval[paramtype]
         if default == None:
-            default = self.defval[type]
-        self.parameters.append({
+            default = self.defval[paramtype]
+        newparam = {
             'name' : name,
-            'type' : type,
+            'type' : paramtype,
             'default' : default,
             'level' : level,
             'description' : description,
@@ -98,7 +105,11 @@ class ParameterGenerator:
             'max' : max,
             'srcline' : inspect.currentframe().f_back.f_lineno,
             'srcfile' : inspect.getsourcefile(inspect.currentframe().f_back.f_code),
-            })
+        }
+        self.check_type(newparam, 'default')
+        self.check_type(newparam, 'max')
+        self.check_type(newparam, 'min')
+        self.parameters.append(newparam)
 
     def mkdirabs(self, path, second_attempt = False):
         if os.path.isdir(path):
