@@ -147,6 +147,8 @@ private:
     {
       ROS_ERROR("Failed to resume original device state after reconfiguring. The requested configuration may contain errors.");
     }
+    
+    ROS_DEBUG("Reconfigure completed.");
   }
 
   /*
@@ -354,10 +356,17 @@ public:
     /// @todo Do something about exit status?
     while (node_handle_.ok() && state_ != EXITING && !ctrl_c_hit_count_)
     {
-      if (!driver_.isRunning())
       {
-        driver_.goClosed(); 
-        driver_.goRunning();
+        // Must lock here, otherwise operations like reconfigure will cause
+        // the test to pass, and an unnecessary restart will happen when the 
+        // reconfigure is done.
+        boost::recursive_mutex::scoped_lock lock_(driver_.mutex_);
+
+        if (!driver_.isRunning())
+        {
+          driver_.goClosed(); 
+          driver_.goRunning();
+        }
       }
 
       /// Will need some locking here or in diagnostic_updater?
