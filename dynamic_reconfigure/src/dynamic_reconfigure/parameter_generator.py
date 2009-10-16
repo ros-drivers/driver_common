@@ -80,7 +80,7 @@ class ParameterGenerator:
     def check_type(self, param, field, default):
         value = param[field]
         # If no value, use default.
-        if not value:
+        if value == None:
             param[field] = default
             return
         # Check that value type is compatible with type.
@@ -106,9 +106,11 @@ class ParameterGenerator:
             'srcline' : inspect.currentframe().f_back.f_lineno,
             'srcfile' : inspect.getsourcefile(inspect.currentframe().f_back.f_code),
         }
+        print newparam
         self.check_type(newparam, 'default', self.defval[paramtype])
         self.check_type(newparam, 'max', self.maxval[paramtype])
         self.check_type(newparam, 'min', self.minval[paramtype])
+        print newparam
         self.parameters.append(newparam)
 
     def mkdirabs(self, path, second_attempt = False):
