@@ -91,6 +91,7 @@ public:
   {
     config_ = ConfigManipulator::getDefaults();
     ConfigManipulator::readFromParamServer(node_handle_, config_);
+    ConfigManipulator::clamp(config_);
     // Write to make sure everything is filled in.
     ConfigManipulator::writeToParamServer(node_handle_, config_);
     
