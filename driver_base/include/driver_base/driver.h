@@ -36,6 +36,10 @@
 #ifndef __DRIVER_BASE__DRIVER_H__
 #define __DRIVER_BASE__DRIVER_H__
 
+#include <ros/ros.h>
+#include <boost/function.hpp>
+#include <boost/thread/recursive_mutex.hpp>
+
 namespace driver_base
 {
 
@@ -257,7 +261,16 @@ private:
     boost::recursive_mutex::scoped_lock lock_(mutex_);
     state_t orig = state_;
     ROS_DEBUG("Trying transition %s from %s to %s.", getTransitionName(transition).c_str(), getStateName(orig).c_str(), getStateName(target).c_str());
-    (this->*transition)();
+    try
+    {
+      (this->*transition)();
+    }
+    catch (...) /// @todo print the exception message better.
+    //catch (std::Exception e)
+    {
+      ROS_WARN("Caught exception in transition %s from %s to %s.\n", getTransitionName(transition).c_str(), getStateName(orig).c_str(), getStateName(target).c_str());
+      //ROS_WARN("Caught exception in transition from %s to %s.\n%s", e.what(), getTransitionName(transition).c_str(), getStateName(orig).c_str(), getStateName(target).c_str());
+    }
     bool out = state_ == target;
     if (out && transition == &Driver::doOpen)
       postOpenHook();

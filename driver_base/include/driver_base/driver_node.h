@@ -86,6 +86,7 @@ protected:
 
   // Helper classes
   ros::NodeHandle node_handle_;
+  ros::NodeHandle private_node_handle_;
   SelfTestType self_test_;
   diagnostic_updater::Updater diagnostic_;
   typename Driver::Reconfigurator reconfigurator_;
@@ -378,7 +379,12 @@ public:
     return 0; /// @todo Work on return type here.
   }
   
-  DriverNode(ros::NodeHandle &nh) : node_handle_(nh), self_test_(this, node_handle_), diagnostic_(node_handle_), reconfigurator_(ros::NodeHandle("~"))
+  DriverNode(ros::NodeHandle &nh) : 
+    node_handle_(nh), 
+    private_node_handle_("~"), 
+    self_test_(this, node_handle_), 
+    diagnostic_(node_handle_), 
+    reconfigurator_(ros::NodeHandle("~"))
   {
     num_subscribed_topics_ = 0; /// @fixme this variable is hokey.
     exit_status_ = 0;
