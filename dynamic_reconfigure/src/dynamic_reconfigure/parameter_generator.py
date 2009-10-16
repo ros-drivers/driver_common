@@ -81,7 +81,7 @@ class ParameterGenerator:
         pytype = { 'str':str, 'int':int, 'double':float, 'bool':bool }[param['type']]
         value = param[field]
         if value and pytype != type(value) and (pytype != float or type(value) != int):
-            raise TypeError("'%s' has type %s, but default is %s"%(name, value, repr(value)))
+            raise TypeError("'%s' has type %s, but default is %s"%(param['name'], value, repr(value)))
         param[field] = pytype(value)
     
     def __init__(self):
