@@ -1,0 +1,2 @@
+string name
+double value
