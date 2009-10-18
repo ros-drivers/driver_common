@@ -55,30 +55,32 @@ namespace ${pkgname}
   class ${name}Config
   {
   private:
-    class AbstractParameterDescription
+    class AbstractParameterDescription : public dynamic_reconfigure2::ParameterDescription
     {
     public:
-      AbstractParameterDescription(std::string name, uint8_t type, int level, 
-          std::string description, std::string edit_method) :
-        name_(name), type_(type), level_(level), 
-        description_(description), edit_method_(edit_method)
-      {}
-
-      std::string name_;
-      uint8_t type_;
-      int level_;
-      std::string description_;
-      std::string edit_method_;
+      AbstractParameterDescription(std::string name, std::string type, uint32_t level, 
+          std::string description, std::string edit_method)
+      {
+        name_ = name;
+        type_ = type;
+        level_ = level;
+        description_ = description;
+        edit_method_ = edit_method;
+      }
       
       virtual void clamp(${name}Config &config) = 0;
       virtual void level(int &level, ${name}Config &config1, ${name}Config &config2) = 0;
+      void fromServer(ros::NodeHandle &nh, ${name}Config &config) = 0;
+      void toServer(ros::NodeHandle &nh, const ${name}Config &config) = 0;
+      bool fromMessage(dynamic_reconfigure2::ParameterSet &msg, ${name}Config &config) = 0;
+      void toMessage(dynamic_reconfigure2::ParameterSet &msg, ${name}Config &config) = 0;
     };
     
     template <class T>
     class ParameterDescription : public AbstractParameterDescription
     {
     public:
-      ParameterDescription(std::string name, uint8_t type, int level, 
+      ParameterDescription(std::string name, std::string type, uint32_t level, 
           std::string description, std::string edit_method, T ${name}Config::* field_) :
         AbstractParameterDescription(name, type, level, description, edit_method),
         field_(field)
@@ -111,29 +113,35 @@ namespace ${pkgname}
         nh.setParam(name_, config->*field_);
       }
 
-      bool fromMsg(dynamic_reconfigure2::ParameterSet &msg, ${name}Config &config)
+      bool fromMessage(dynamic_reconfigure2::ParameterSet &msg, ${name}Config &config)
       {
         return dynamic_reconfigure::ParameterSetTools::getParameter(name_, config_->*field);
       }
 
-      void toMsg(dynamic_reconfigure2::ParameterSet &msg, ${name}Config &config)
+      void toMessage(dynamic_reconfigure2::ParameterSet &msg, ${name}Config &config)
       {
         return dynamic_reconfigure::ParameterSetTools::AppendParameter(name_, config_->*field);
       }
     };
 
-    int num_parameters_ = ${num_parameters};
+    template <> // Max and min are ignored for strings.
+    ParameterDescription<string>::clamp(${name}Config &config, const ${name}Config &max, const ${name}Config &min) const
+    {
+      return;
+    }
+
+    static int __num_parameters__ = ${num_parameters};
     AbstractParameterDescription<${name}Config> *parameters_[] = {
     };
-    ${name}Config __max__ = {
+    static ${name}Config __max__ = {
 ${maxes}
 #line ${linenum} "${filename}"
     };
-    ${name}Config __min__ = {
+    static ${name}Config __min__ = {
 ${mins}
 #line ${linenum} "${filename}"
     };
-    ${name}Config __default__ = {
+    static ${name}Config __default__ = {
 ${defaults}
 #line ${linenum} "${filename}"
     };
@@ -141,7 +149,7 @@ ${defaults}
 $members
 #line ${linenum} "${filename}"
 
-    bool __fromMsg__(dynamic_reconfigure2::ParameterSet &msg)
+    bool __fromMessage__(dynamic_reconfigure2::ParameterSet &msg)
     {
       int count = 0;
       for (int i = 0; i < __.num_parameters_; i++)
@@ -151,33 +159,43 @@ $members
       // @todo Check that there are no duplicates.
     }
 
-    void __toMsg__(dynamic_reconfigure2::ParameterSet &msg)
+    void __toMessage__(dynamic_reconfigure2::ParameterSet &msg) const
     {
       for (int i = 0; i < __.num_parameters_; i++)
         __.parameters_[i]->appendParameter(msg, *this);
     }
     
-    bool __toServer__(const ros::NodeHandle &nh = ros::NodeHandle("~"))
+    void __toServer__(const ros::NodeHandle &nh = ros::NodeHandle("~")) const
     {
       for (int i = 0; i < __.num_parameters_; i++)
         __.parameters_[i]->toServer(ros::NodeHandle nh);
     }
 
-    bool __fromServer__(const ros::NodeHandle &nh = ros::NodeHandle("~"))
+    void __fromServer__(const ros::NodeHandle &nh = ros::NodeHandle("~"))
     {
       for (int i = 0; i < __.num_parameters_; i++)
         __.parameters_[i]->fromServer(ros::NodeHandle nh);
     }
-    
+
+    static bool __getDescriptionMessage__(dynamic_reconfigure2::ConfigDescription &msg) 
+    {
+      msg.set_parameters_size(__num_parameters__);
+      for (int i = 0; i < __.num_parameters_; i++)
+        msg.parameters[i] = parameters_[i];
+      msg.max = __max__;
+      msg.min = __min__;
+      msg.dflt = __default__;
+    }
+
     void __clamp__()
     {
       for (int i = 0; i < __.num_parameters_; i++)
         __.parameters_[i]->clamp(*this, __.max_, __.min_)
     }
 
-    int __level__(const ${name}Config &config)
+    uint32_t __level__(const ${name}Config &config) const
     {
-      int level = 0;
+      uint32_t level = 0;
       for (${name}Config.iterator i = config.parameters_.start(); i != config.parameters_.end(); i++)
         __.parameters_[i]->level(level, config, *this);
       return level;

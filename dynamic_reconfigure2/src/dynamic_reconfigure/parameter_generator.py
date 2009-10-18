@@ -86,7 +86,7 @@ class ParameterGenerator:
         # Check that value type is compatible with type.
         pytype = { 'str':str, 'int':int, 'double':float, 'bool':bool }[param['type']]
         if value and pytype != type(value) and (pytype != float or type(value) != int):
-            raise TypeError("'%s' has type %s, but default is %s"%(param['name'], value, repr(value)))
+            raise TypeError("'%s' has type %s, but default is %s"%(param['name'], param['type'], repr(value)))
         # Do any necessary casting.
         param[field] = pytype(value)
     
@@ -106,6 +106,9 @@ class ParameterGenerator:
             'srcline' : inspect.currentframe().f_back.f_lineno,
             'srcfile' : inspect.getsourcefile(inspect.currentframe().f_back.f_code),
         }
+        if type == str_t and (max != None or min != None):
+            raise Exception("Max or min specified for %s, which is of string type"%name)
+
         self.check_type(newparam, 'default', self.defval[paramtype])
         self.check_type(newparam, 'max', self.maxval[paramtype])
         self.check_type(newparam, 'min', self.minval[paramtype])

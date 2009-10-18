@@ -61,25 +61,32 @@ namespace dynamic_reconfigure
  * Keeps track of the reconfigure callback function.
  */
 template <class ConfigType>  
-class DynamicReconfigureServer
+class Server
 {
 public:
-  DynamicReconfigureServer(NodeHandle nh) :
+  Server(NodeHandle nh) :
     node_handle_(nh)
   {
-    set_service_ = node_handle_.advertiseService("set_parameters", &DynamicReconfigureServer<ConfigManipulator>::setConfigService, this);
-
-    ParameterSet
-
-    update_pub_ = node_handle_.advertise("parameter_changes", 1, true);
-    update_pub_.publish(descr.default);
-    descr_pub_ = node_handle_.advertise("parameter_description", 1, true);
+    set_service_ = node_handle_.advertiseService("set_parameters",
+        &Server<ConfigManipulator>::setConfigCallback, this);
+    
+    descr_pub_ = node_handle_.advertise<dynamic_reconfigure2::ConfigurationDescription>
+      ("parameter_description", 1, true);
+    dynamic_reconfigure2::ConfigurationDescription descr;
+    ConfigType::__getDescriptionMessage__(descr);
     descr_pub_.publish(descr);
-private:
+    
+    update_pub_ = node_handle_.advertise("parameter_changes", 1, true);
+    ConfigType init_config = ConfigType::__defaults__;
+    init_config.__fromServer__();
+    updateConfig(init_config);
   }
+
+  typedef boost::function<void(ConfigType &, int level)> CallbackType;
   
-  void setCallback(const boost::function<void(int level)> &callback)
+  void setCallback(CallbackType &callback)
   {
+    boost::mutex::scoped_lock lock(mutex_);
     callback_ = callback;
     if (callback) // At startup we need to load the configuration with all level bits set. (Everything has changed.)
       callback(~0);
@@ -89,49 +96,50 @@ private:
 
   void clearCallback()
   {
+    boost::mutex::scoped_lock lock(mutex_);
     callback_.clear();
   }
 
-protected:
-  ros::NodeHandle node_handle_;
-
-  void updateParams(const dynamic_reconfigure2::ParameterSet &)
+  void updateConfig(const ConfigType &config)
   {
-    update_pub_.publish(new_params);
+    boost::mutex::scoped_lock lock(mutex_);
+    config_ = config;
+    config_.__toServer__();
+    update_pub_.publish(config_);
   }
 
 private:
+  ros::NodeHandle node_handle_;
   ros::ServiceServer set_service_;
   ros::Publisher update_pub_;
   ros::Publisher descr_pub_;
-  boost::function<void(int level)> callback_;
+  CallbackType callback_;
+  ConfigType config_;
+  boost::mutex mutex_;
 
-  bool setConfigService(typename ConfigManipulator::SetService::Request &req, 
+  bool setConfigCallback(typename ConfigManipulator::SetService::Request &req, 
       typename ConfigManipulator::SetService::Response &rsp)
   {
+    boost::mutex::scoped_lock lock(mutex_);
+
     class ConfigManipulator::ConfigType new_config = req.config;
     ConfigManipulator::clamp(new_config);
-    int level = ConfigManipulator::getChangeLevel(new_config, config_);
-
+    int level = config_.ConfigManipulator::getChangeLevel(config_);
     
-    setConfig(new_config);
-
-    // We expect config_ to be read, and possibly written during the
-    // callback.
     if (callback_)
-      callback_(level);
-    
-    rsp.config = config_;
+      callback_(new_config, level);
 
+    updateConfig(new_config)
+    rsp.config = new_config;
     return true;
   }
 };
 
 template <class ConfigManipulator>
-class DynamicReconfigureServer : public GenericDynamicReconfigureServerUnchecked
+class Server : public GenericServerUnchecked
 {
 public:
-  DynamicReconfigureServer(const ros::NodeHandle &nh) : node_handle_(nh)
+  Server(const ros::NodeHandle &nh) : node_handle_(nh)
   {
     config_ = ConfigManipulator::getDefaults();
     ConfigManipulator::readFromParamServer(node_handle_, config_);
@@ -140,7 +148,7 @@ public:
     ConfigManipulator::writeToParamServer(node_handle_, config_);
     
     static const std::string get_config = "get_configuration";
-    get_service_ = node_handle_.advertiseService(get_config, &DynamicReconfigureServer<ConfigManipulator>::getConfigService, this);
+    get_service_ = node_handle_.advertiseService(get_config, &Server<ConfigManipulator>::getConfigService, this);
   }
 
   void getConfig(class ConfigManipulator::ConfigType &config)

@@ -30,7 +30,7 @@ macro(gencfg)
   include_directories(${PROJECT_SOURCE_DIR}/cfg/cpp)
 endmacro(gencfg)
 
-find_ros_package(dynamic_reconfigure)
+rosbuild_find_ros_package(dynamic_reconfigure)
 
 macro(gencfg_cpp)
   get_cfgs(_cfglist)
@@ -40,7 +40,7 @@ macro(gencfg_cpp)
     # Construct the path to the .cfg file
     set(_input ${PROJECT_SOURCE_DIR}/cfg/${_cfg})
   
-    gendeps(${PROJECT_NAME} ${_cfg})
+    rosbuild_gendeps(${PROJECT_NAME} ${_cfg})
   
     # The .cfg file is its own generator.
     set(gencfg_cpp_exe "")
@@ -52,19 +52,12 @@ macro(gencfg_cpp)
     set(_output_cpp ${PROJECT_SOURCE_DIR}/cfg/cpp/${PROJECT_NAME}/${_cfg_bare}Reconfigurator.h)
     set(_output_dox ${PROJECT_SOURCE_DIR}/dox/${_cfg_bare}Config.dox)
     set(_output_usage ${PROJECT_SOURCE_DIR}/dox/${_cfg_bare}Config-usage.dox)
-
-    # Indicate the msg and srv files that will get generated.
-    string(REPLACE ${PROJECT_SOURCE_DIR}/msg/ "" _output_msg_name ${_output_msg})
-    string(REPLACE ${PROJECT_SOURCE_DIR}/srv/ "" _output_getsrv_name ${_output_getsrv})
-    string(REPLACE ${PROJECT_SOURCE_DIR}/srv/ "" _output_setsrv_name ${_output_setsrv})
-    add_generated_msg(${_output_msg_name})
-    add_generated_srv(${_output_setsrv_name} ${_output_getsrv_name})
     set(_output_py ${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}/cfg/${_cfg_bare}Config.py)
 
     # Add the rule to build the .h the .cfg and the .msg
     # FIXME Horrible hack. Can't get CMAKE to add dependencies for anything
     # but the first output in add_custom_command.
-    add_custom_command(OUTPUT ${_output_cpp} ${_output_dox} ${_output_usage} 
+    add_custom_command(OUTPUT ${_output_cpp} ${_output_dox} ${_output_usage} ${_output_py}
                        COMMAND ${gencfg_cpp_exe} ${_input}
                        DEPENDS ${_input} ${gencfg_cpp_exe} ${ROS_MANIFEST_LIST} ${gencfg_build_files})
     list(APPEND _autogen ${_output_cpp} ${_output_msg} ${_output_getsrv} ${_output_setsrv} 
