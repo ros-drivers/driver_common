@@ -42,14 +42,16 @@
 
 */
 
-#ifndef __RECONFIGURATOR_H__
-#define __RECONFIGURATOR_H__
+#ifndef __SERVER_H__
+#define __SERVER_H__
 
 #include <boost/function.hpp>
 #include <ros/node_handle.h>
+#include <dynamic_reconfigure2/ParameterDescription.h>
+#include <dynamic_reconfigure2/ParameterSet.h>
+#include <dynamic_reconfigure2/Reconfigure.h>
 
 /**
- * @todo Add checks that settings are within range.
  * @todo Add diagnostics.
  */
 
@@ -58,11 +60,22 @@ namespace dynamic_reconfigure
 /**
  * Keeps track of the reconfigure callback function.
  */
-class AbstractReconfigurator
+template <class ConfigType>  
+class DynamicReconfigureServer
 {
 public:
-  AbstractReconfigurator()
+  DynamicReconfigureServer(NodeHandle nh) :
+    node_handle_(nh)
   {
+    set_service_ = node_handle_.advertiseService("set_parameters", &DynamicReconfigureServer<ConfigManipulator>::setConfigService, this);
+
+    ParameterSet
+
+    update_pub_ = node_handle_.advertise("parameter_changes", 1, true);
+    update_pub_.publish(descr.default);
+    descr_pub_ = node_handle_.advertise("parameter_description", 1, true);
+    descr_pub_.publish(descr);
+private:
   }
   
   void setCallback(const boost::function<void(int level)> &callback)
@@ -80,14 +93,45 @@ public:
   }
 
 protected:
+  ros::NodeHandle node_handle_;
+
+  void updateParams(const dynamic_reconfigure2::ParameterSet &)
+  {
+    update_pub_.publish(new_params);
+  }
+
+private:
+  ros::ServiceServer set_service_;
+  ros::Publisher update_pub_;
+  ros::Publisher descr_pub_;
   boost::function<void(int level)> callback_;
+
+  bool setConfigService(typename ConfigManipulator::SetService::Request &req, 
+      typename ConfigManipulator::SetService::Response &rsp)
+  {
+    class ConfigManipulator::ConfigType new_config = req.config;
+    ConfigManipulator::clamp(new_config);
+    int level = ConfigManipulator::getChangeLevel(new_config, config_);
+
+    
+    setConfig(new_config);
+
+    // We expect config_ to be read, and possibly written during the
+    // callback.
+    if (callback_)
+      callback_(level);
+    
+    rsp.config = config_;
+
+    return true;
+  }
 };
 
 template <class ConfigManipulator>
-class Reconfigurator : public AbstractReconfigurator
+class DynamicReconfigureServer : public GenericDynamicReconfigureServerUnchecked
 {
 public:
-  Reconfigurator(const ros::NodeHandle &nh) : node_handle_(nh)
+  DynamicReconfigureServer(const ros::NodeHandle &nh) : node_handle_(nh)
   {
     config_ = ConfigManipulator::getDefaults();
     ConfigManipulator::readFromParamServer(node_handle_, config_);
@@ -96,9 +140,7 @@ public:
     ConfigManipulator::writeToParamServer(node_handle_, config_);
     
     static const std::string get_config = "get_configuration";
-    get_service_ = node_handle_.advertiseService(get_config, &Reconfigurator<ConfigManipulator>::getConfigService, this);
-    static const std::string set_config = "set_configuration";
-    set_service_ = node_handle_.advertiseService(set_config, &Reconfigurator<ConfigManipulator>::setConfigService, this);
+    get_service_ = node_handle_.advertiseService(get_config, &DynamicReconfigureServer<ConfigManipulator>::getConfigService, this);
   }
 
   void getConfig(class ConfigManipulator::ConfigType &config)
@@ -123,30 +165,9 @@ private:
     return true;
   }
 
-  bool setConfigService(typename ConfigManipulator::SetService::Request &req, 
-      typename ConfigManipulator::SetService::Response &rsp)
-  {
-    class ConfigManipulator::ConfigType new_config = req.config;
-    ConfigManipulator::clamp(new_config);
-    int level = ConfigManipulator::getChangeLevel(new_config, config_);
-
-    
-    setConfig(new_config);
-
-    // We expect config_ to be read, and possibly written during the
-    // callback.
-    if (callback_)
-      callback_(level);
-    
-    rsp.config = config_;
-
-    return true;
-  }
 
   class ConfigManipulator::ConfigType config_;
-  ros::NodeHandle node_handle_;
   ros::ServiceServer get_service_;
-  ros::ServiceServer set_service_;
 };
                                  
 }

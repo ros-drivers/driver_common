@@ -1,2 +1,2 @@
 string name
-int value
+int32 value
