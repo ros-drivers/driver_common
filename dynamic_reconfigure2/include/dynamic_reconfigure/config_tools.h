@@ -1,10 +1,12 @@
-#include <dynamic_reconfigure2/parameter_set.h>
+#ifndef __DYNAMIC_RECONFIGURE__CONFIG_TOOLS__
+#define __DYNAMIC_RECONFIGURE__CONFIG_TOOLS__
+
 #include <string>
 
 namespace dynamic_reconfigure
 {
 
-class ParameterSetTools
+class ConfigTools
 {
   static void std::vector<bool> &getVectorForType(ParameterSet &set, bool val)
   {
@@ -82,3 +84,5 @@ class ParameterSetTools
 };
 
 }
+
+#endif

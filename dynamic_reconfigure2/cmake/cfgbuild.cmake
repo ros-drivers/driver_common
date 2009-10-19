@@ -25,12 +25,10 @@ macro(gencfg)
   add_custom_target(rospack_gencfg_real ALL)
   add_dependencies(rospack_gencfg_real rospack_gencfg)
   # Need to do cfg then msg then srv.
-  add_dependencies(rospack_genmsg rospack_gencfg)
-  add_dependencies(rospack_gensrv rospack_genmsg)
   include_directories(${PROJECT_SOURCE_DIR}/cfg/cpp)
 endmacro(gencfg)
 
-rosbuild_find_ros_package(dynamic_reconfigure)
+rosbuild_find_ros_package(dynamic_reconfigure2)
 
 macro(gencfg_cpp)
   get_cfgs(_cfglist)
@@ -44,12 +42,14 @@ macro(gencfg_cpp)
   
     # The .cfg file is its own generator.
     set(gencfg_cpp_exe "")
-    set(gencfg_build_files ${dynamic_reconfigure_PACKAGE_PATH}/templates/ConfigReconfigurator.h
-      ${dynamic_reconfigure_PACKAGE_PATH}/src/dynamic_reconfigure/parameter_generator.py)
+    set(gencfg_build_files 
+      ${dynamic_reconfigure2_PACKAGE_PATH}/templates/ConfigType.py
+      ${dynamic_reconfigure2_PACKAGE_PATH}/templates/ConfigType.h
+      ${dynamic_reconfigure2_PACKAGE_PATH}/src/dynamic_reconfigure/parameter_generator.py)
 
     string(REPLACE ".cfg" "" _cfg_bare ${_cfg})
 
-    set(_output_cpp ${PROJECT_SOURCE_DIR}/cfg/cpp/${PROJECT_NAME}/${_cfg_bare}Reconfigurator.h)
+    set(_output_cpp ${PROJECT_SOURCE_DIR}/cfg/cpp/${PROJECT_NAME}/${_cfg_bare}Config.h)
     set(_output_dox ${PROJECT_SOURCE_DIR}/dox/${_cfg_bare}Config.dox)
     set(_output_usage ${PROJECT_SOURCE_DIR}/dox/${_cfg_bare}Config-usage.dox)
     set(_output_py ${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}/cfg/${_cfg_bare}Config.py)
@@ -69,12 +69,7 @@ macro(gencfg_cpp)
   # Add our target to the top-level gencfg target, which will be fired if
   # the user calls gencfg()
   add_dependencies(rospack_gencfg ROSBUILD_gencfg_cpp)
-
-  # FIXME Remove these later, once ROS has been patched.
-  genmsg_cpp()
-  gensrv_cpp()
 endmacro(gencfg_cpp)
 
 # Call the macro we just defined.
 gencfg_cpp()
-
