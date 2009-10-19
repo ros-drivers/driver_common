@@ -72,11 +72,11 @@ public:
     
     descr_pub_ = node_handle_.advertise<dynamic_reconfigure2::ConfigDescription>
       ("parameter_description", 1, true);
-    dynamic_reconfigure2::ConfigurationDescription descr;
+    dynamic_reconfigure2::ConfigDescription descr;
     ConfigType::__getDescriptionMessage__(descr);
     descr_pub_.publish(descr);
     
-    update_pub_ = node_handle_.advertise("parameter_changes", 1, true);
+    update_pub_ = node_handle_.advertise<dynamic_reconfigure2::Config>("parameter_changes", 1, true);
     ConfigType init_config = ConfigType::__defaults__;
     init_config.__fromServer__();
     init_config.__clamp__();
@@ -123,14 +123,14 @@ private:
   {
     boost::mutex::scoped_lock lock(mutex_);
 
-    class ConfigType new_config = req.config;
-    ConfigManipulator::clamp(new_config);
-    int level = config_.ConfigManipulator::getChangeLevel(config_);
+    ConfigType new_config = req.config;
+    new_config.clamp();
+    int level = config_.__level__(new_config);
     
     if (callback_)
       callback_(new_config, level);
 
-    updateConfig(new_config)
+    updateConfig(new_config);
     rsp.config = new_config;
     return true;
   }
