@@ -12,8 +12,9 @@ void callback(dynamic_reconfigure2::TestConfig &config, uint32_t level)
 
 int main(int argc, char **argv)
 {
-  dynamic_reconfigure::Server srv;
-  srv.setCallback(&callback);
+  dynamic_reconfigure::Server<dynamic_reconfigure2::TestConfig> srv;
+  dynamic_reconfigure::Server<dynamic_reconfigure2::TestConfig>::CallbackType f = boost::bind(&callback, _1, _2);
+  srv.setCallback(f);
   ros::spin();
   return 0;
 }

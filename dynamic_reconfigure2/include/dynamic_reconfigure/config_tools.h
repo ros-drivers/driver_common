@@ -10,58 +10,89 @@ namespace dynamic_reconfigure
 
 class ConfigTools
 {
-  static std::vector<bool> &getVectorForType(dynamic_reconfigure2::Config &set, bool val)
+public:
+  static std::vector<dynamic_reconfigure2::BoolParameter> &getVectorForType(dynamic_reconfigure2::Config &set, const bool val)
   {
     return set.bools;
   }
   
-  static std::vector<int> &getVectorForType(dynamic_reconfigure2::Config &set, int val)
+  static std::vector<dynamic_reconfigure2::IntParameter> &getVectorForType(dynamic_reconfigure2::Config &set, const int val)
   {
     return set.ints;
   }
   
-  static std::vector<std::string> &getVectorForType(dynamic_reconfigure2::Config &set, std::string &val)
+  static std::vector<dynamic_reconfigure2::StrParameter> &getVectorForType(dynamic_reconfigure2::Config &set, const std::string &val)
   {
     return set.strs;
   }
   
-  static std::vector<double> &getVectorForType(dynamic_reconfigure2::Config &set, double val)
+  static std::vector<dynamic_reconfigure2::DoubleParameter> &getVectorForType(dynamic_reconfigure2::Config &set, const double val)
   {
     return set.doubles;
   }
   
-  static dynamic_reconfigure2::BoolParameter makeKeyValuePair(std::string &name, bool val)
+  static const std::vector<dynamic_reconfigure2::BoolParameter> &getVectorForType(const dynamic_reconfigure2::Config &set, const bool val)
   {
-    
-    dynamic_reconfigure2::BoolParameter param = { name, val };
+    return set.bools;
+  }
+  
+  static const std::vector<dynamic_reconfigure2::IntParameter> &getVectorForType(const dynamic_reconfigure2::Config &set, const int val)
+  {
+    return set.ints;
+  }
+  
+  static const std::vector<dynamic_reconfigure2::StrParameter> &getVectorForType(const dynamic_reconfigure2::Config &set, const std::string &val)
+  {
+    return set.strs;
+  }
+  
+  static const std::vector<dynamic_reconfigure2::DoubleParameter> &getVectorForType(const dynamic_reconfigure2::Config &set, const double val)
+  {
+    return set.doubles;
+  }
+  
+  static dynamic_reconfigure2::BoolParameter makeKeyValuePair(const std::string &name, const bool val)
+  {
+    dynamic_reconfigure2::BoolParameter param;
+    param.name = name;
+    param.value = val ;
     return param;
   }
 
-  static dynamic_reconfigure2::IntParameter makeKeyValuePair(std::string &name, int val)
+  static dynamic_reconfigure2::IntParameter makeKeyValuePair(const std::string &name, const int val)
   {
-    return dynamic_reconfigure2::IntParameter(name, val);
+    dynamic_reconfigure2::IntParameter param;
+    param.name = name;
+    param.value = val ;
+    return param;
   }
 
-  static dynamic_reconfigure2::StrParameter makeKeyValuePair(std::string &name, const std::string &val)
+  static dynamic_reconfigure2::StrParameter makeKeyValuePair(const std::string &name, const std::string &val)
   {
-    return dynamic_reconfigure2::StrParameter(name, val);
+    dynamic_reconfigure2::StrParameter param;
+    param.name = name;
+    param.value = val ;
+    return param;
   }
 
-  static dynamic_reconfigure2::DoubleParameter makeKeyValuePair(std::string &name, double val)
+  static dynamic_reconfigure2::DoubleParameter makeKeyValuePair(const std::string &name, const double val)
   {
-    return dynamic_reconfigure2::DoubleParameter(name, val);
+    dynamic_reconfigure2::DoubleParameter param;
+    param.name = name;
+    param.value = val ;
+    return param;
   }
 
   template <class T>
-  static void appendParameter(dynamic_reconfigure2::Config &set, const std::string &name, T &val)
+  static void appendParameter(dynamic_reconfigure2::Config &set, const std::string &name, const T &val)
   {
     getVectorForType(set, val).push_back(makeKeyValuePair(name, val));
   }
 
-  template <class V, class T>
-  static bool getParameter(V &vec, const std::string &name, T &val)
+  template <class VT, class T>
+  static bool getParameter(const std::vector<VT> &vec, const std::string &name, T &val)
   {
-    for (V::const_iterator i = vec.begin(); i != vec.end(); i++)
+    for (typename std::vector<VT>::const_iterator i = vec.begin(); i != vec.end(); i++)
       if (i->name == name)
       {
         val = i->value;
@@ -71,20 +102,23 @@ class ConfigTools
   }
 
   template <class T>
-  static bool getParameter(dynamic_reconfigure2::Config &set, const std::string &name, T &val)
+  static bool getParameter(const dynamic_reconfigure2::Config &set, const std::string &name, T &val)
   {
-    return getParameter(getVectorForType(set, val), val);
+    return getParameter(getVectorForType(set, val), name, val);
   }
 
-  /*template <class V> 
-  static void appendNames(V &vec, std::vector<std::string> &names)
+  static int size(dynamic_reconfigure2::Config &msg)
   {
-    for (V.const_iterator i = vec.begin(); i != v.end(); i++)
-      names.push_back(i->name);
+    return msg.get_bools_size() + msg.get_doubles_size() + msg.get_ints_size() + msg.get_strs_size();
   }
 
-  template <>
-  static void appendNames(dynamic_reconfigure2::Config &set, std::vector<std::string> &names)*/
+  static void clear(dynamic_reconfigure2::Config &msg)
+  {
+    msg.bools.clear();
+    msg.ints.clear();
+    msg.strs.clear();
+    msg.doubles.clear();
+  }
 };
 
 }

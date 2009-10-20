@@ -64,7 +64,7 @@ template <class ConfigType>
 class Server
 {
 public:
-  Server(ros::NodeHandle &nh) :
+  Server(const ros::NodeHandle &nh = ros::NodeHandle("~")) :
     node_handle_(nh)
   {
     set_service_ = node_handle_.advertiseService("set_parameters",
@@ -72,25 +72,23 @@ public:
     
     descr_pub_ = node_handle_.advertise<dynamic_reconfigure2::ConfigDescription>
       ("parameter_description", 1, true);
-    dynamic_reconfigure2::ConfigDescription descr;
-    ConfigType::__getDescriptionMessage__(descr);
-    descr_pub_.publish(descr);
+    descr_pub_.publish(ConfigType::__getDescriptionMessage__());
     
     update_pub_ = node_handle_.advertise<dynamic_reconfigure2::Config>("parameter_changes", 1, true);
-    ConfigType init_config = ConfigType::__defaults__;
-    init_config.__fromServer__();
+    ConfigType init_config = ConfigType::__getDefault__();
+    init_config.__fromServer__(node_handle_);
     init_config.__clamp__();
     updateConfig(init_config);
   }
 
-  typedef boost::function<void(ConfigType &, int level)> CallbackType;
+  typedef boost::function<void(ConfigType &, uint32_t level)> CallbackType;
   
   void setCallback(CallbackType &callback)
   {
     boost::mutex::scoped_lock lock(mutex_);
     callback_ = callback;
     if (callback) // At startup we need to load the configuration with all level bits set. (Everything has changed.)
-      callback(~0);
+      callback(config_, ~0);
     else
       ROS_INFO("setCallback did not call callback because it was zero."); /// @todo kill this line.
   }
@@ -105,8 +103,10 @@ public:
   {
     boost::mutex::scoped_lock lock(mutex_);
     config_ = config;
-    config_.__toServer__();
-    update_pub_.publish(config_);
+    config_.__toServer__(node_handle_);
+    dynamic_reconfigure2::Config msg;
+    config_.__toMessage__(msg);
+    update_pub_.publish(msg);
   }
 
 private:
@@ -123,15 +123,16 @@ private:
   {
     boost::mutex::scoped_lock lock(mutex_);
 
-    ConfigType new_config = req.config;
-    new_config.clamp();
-    int level = config_.__level__(new_config);
+    ConfigType new_config;
+    new_config.__fromMessage__(req.config);
+    new_config.__clamp__();
+    uint32_t level = config_.__level__(new_config);
     
     if (callback_)
       callback_(new_config, level);
 
     updateConfig(new_config);
-    rsp.config = new_config;
+    new_config.__toMessage__(rsp.config);
     return true;
   }
 };

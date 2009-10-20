@@ -49,6 +49,9 @@ import os
 import inspect
 import string 
 
+LINEDEBUG="#line"
+#LINEDEBUG="//#line"
+
 # Convenience names for types
 str_t = "str"
 bool_t = "bool"
@@ -95,7 +98,7 @@ class ParameterGenerator:
         self.parameters = []
         self.dynconfpath = roslib.packages.get_pkg_dir("dynamic_reconfigure2")
 
-    def add(self, name, paramtype, level, description, default = None, min = None, max = None):
+    def add(self, name, paramtype, level, description, default = None, min = None, max = None, edit_method = ""):
         newparam = {
             'name' : name,
             'type' : paramtype,
@@ -106,6 +109,7 @@ class ParameterGenerator:
             'max' : max,
             'srcline' : inspect.currentframe().f_back.f_lineno,
             'srcfile' : inspect.getsourcefile(inspect.currentframe().f_back.f_code),
+            'edit_method' : edit_method,
         }
         if type == str_t and (max != None or min != None):
             raise Exception("Max or min specified for %s, which is of string type"%name)
@@ -218,8 +222,7 @@ class ParameterGenerator:
             val = ""
         else:
             val = self.crepr(param, param[value])
-        list.append(Template('      '+text).substitute(param, v=val))
-        #list.append(Template('#line $srcline "$srcfile"\n      '+text).substitute(param, v=val))
+        list.append(Template('${doline} $srcline "$srcfile"\n      '+text).safe_substitute(param, v=val, doline=LINEDEBUG, configname=self.name))
     
     def generatecpp(self):
         # Read the configuration manipulator template and insert line numbers and file name into template.
@@ -238,24 +241,21 @@ class ParameterGenerator:
         cfg_cpp_dir = os.path.join("cfg", "cpp", self.pkgname)
         self.mkdir(cfg_cpp_dir)
         f = open(os.path.join(self.pkgpath, cfg_cpp_dir, self.name+"Config.h"), 'w')
-        maxes = []
-        mins = []
-        defaults = []
+        paramdescr = []
         members = []
         for param in self.parameters:
-            self.appendline(mins, "$v,", param, "min")
-            self.appendline(maxes, "$v,", param, "max")
-            self.appendline(defaults, "$v,", param, "default")
-            self.appendline(members, "$ctype $name;", param)
-        # Remember to delete trailing comma when merging below.
-        defaults = string.join(defaults, '\n')[0:-1] 
-        mins = string.join(mins, '\n')[0:-1]
-        maxes = string.join(maxes, '\n')[0:-1]
+            self.appendline(members, "${ctype} ${name};", param)
+            self.appendline(paramdescr, "__min__.${name} = $v;", param, "min")
+            self.appendline(paramdescr, "__max__.${name} = $v;", param, "max")
+            self.appendline(paramdescr, "__default__.${name} = $v;", param, "default")
+            self.appendline(paramdescr, 
+                    "__param_descriptions__.push_back(AbstractParamDescriptionConstPtr(new ParamDescription<${ctype}>(\"${name}\", \"${type}\", ${level}, "\
+                            "\"${description}\", \"${edit_method}\", &${configname}Config::${name})));", 
+                    param)
+        paramdescr = string.join(paramdescr, '\n')
         members = string.join(members, '\n')
-
-        f.write(Template(template).substitute(uname=self.name.upper(), name = self.name, 
-            pkgname = self.pkgname, num_parameters = len(self.parameters),
-            maxes = maxes, mins = mins, defaults = defaults, members = members))
+        f.write(Template(template).substitute(uname=self.name.upper(), configname=self.name,
+            pkgname = self.pkgname, paramdescr = paramdescr, members = members, doline = LINEDEBUG))
         f.close()
 
     def deleteoneobsolete(self, file):
