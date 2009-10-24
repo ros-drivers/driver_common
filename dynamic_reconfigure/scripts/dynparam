@@ -76,7 +76,7 @@ def do_set():
 
 def do_get():
     parser = OptionParser(usage="usage: %prog get [options] node", prog=NAME)
-    options, args = parser.parse_args(sys.argv[2:])
+    options, args = parser.parse_args(myargv[2:])
 
     if len(args) == 0:
         parser.error("invalid arguments. Please specify a node name")
@@ -89,7 +89,7 @@ def do_get():
 
 def do_dump():
     parser = OptionParser(usage="usage: %prog dump [options] node file", prog=NAME)
-    options, args = parser.parse_args(sys.argv[2:])
+    options, args = parser.parse_args(myargv[2:])
 
     if len(args) == 0:
         parser.error("invalid arguments. Please specify a node name")
@@ -107,7 +107,7 @@ def do_dump():
 
 def do_load():
     parser = OptionParser(usage="usage: %prog load [options] node file", prog=NAME)
-    options, args = parser.parse_args(sys.argv[2:])
+    options, args = parser.parse_args(myargv[2:])
 
     if len(args) == 0:
         parser.error("invalid arguments. Please specify a node name")
@@ -124,15 +124,16 @@ def do_load():
     f.close()
 
 if __name__ == '__main__':
-    if len(sys.argv) == 1:
+    myargv = rospy.myargv()
+    if len(myargv) == 1:
       print_usage()
-    if sys.argv[1] == "list":
+    if myargv[1] == "list":
       do_list()
-    if sys.argv[1] == "set":
+    if myargv[1] == "set":
       do_set()
-    if sys.argv[1] == "get":
+    if myargv[1] == "get":
       do_get()
-    if sys.argv[1] == "load":
+    if myargv[1] == "load":
       do_load()
-    if sys.argv[1] == "dump":
+    if myargv[1] == "dump":
       do_dump()
