@@ -34,7 +34,7 @@
 #***********************************************************
 
 
-import roslib; roslib.load_manifest('dynamic_reconfigure')
+import roslib; roslib.load_manifest('dynamic_reconfigure2')
 import rospy
 import dynamic_reconfigure.dynamic_reconfigure as dynamic_reconfigure
 import threading
@@ -52,7 +52,7 @@ class DynamicReconfigureBoolean(wx.CheckBox):
     def update(self, event):
         #print self.name, self.GetValue()
         rslt = self.GetParent().reconf.update_configuration({ self.name:self.GetValue() })
-        self.SetValue(rslt.__getattribute__(self.name))
+        self.SetValue(rslt[self.name])
 
 class DynamicReconfigureString(wx.TextCtrl):
     def __init__(self, parent, name, value, min, max):
@@ -72,7 +72,7 @@ class DynamicReconfigureString(wx.TextCtrl):
             return
         #print self.name, new_value, repr(new_value)
         rslt = self.GetParent().reconf.update_configuration({ self.name:new_value })
-        self.SetValue(rslt.__getattribute__(self.name))
+        self.SetValue(rslt[self.name])
         #print rslt
 
 class DynamicReconfigureInteger(wx.Panel):
@@ -101,8 +101,7 @@ class DynamicReconfigureInteger(wx.Panel):
         if self.value == new_value:
             return
         rslt = self.GetParent().reconf.update_configuration({ self.name:new_value })
-        self.value = rslt.__getattribute__(self.name)
-        self.value = new_value
+        self.value = rslt[self.name]
         self.UpdateWidgets()
     
     def UpdateWidgets(self):
@@ -160,10 +159,10 @@ class DynamicReconfigureDouble(DynamicReconfigureInteger):
         return float(val)
 
 DynamicReconfigureWidget = {
-        'int8':DynamicReconfigureBoolean,
-        'int32':DynamicReconfigureInteger,
-        'float64':DynamicReconfigureDouble,
-        'string':DynamicReconfigureString,
+        'bool':DynamicReconfigureBoolean,
+        'int':DynamicReconfigureInteger,
+        'double':DynamicReconfigureDouble,
+        'str':DynamicReconfigureString,
         }
                     
 class DynamicReconfigurePanel(wx.Panel):
@@ -171,21 +170,23 @@ class DynamicReconfigurePanel(wx.Panel):
         wx.Panel.__init__(self, parent, wx.ID_ANY)
         self.reconf = dynamic_reconfigure.DynamicReconfigureClient(node)
         config = self.reconf.get_configuration()
+        descr = self.reconf.get_parameter_descriptions()
         
         sizer = wx.FlexGridSizer(0, 2)
         sizer.SetFlexibleDirection(wx.BOTH)
         sizer.AddGrowableCol(1, 1)
         flags = {
-                'int8':wx.ALIGN_LEFT,
-                'int32':wx.EXPAND,
-                'string':wx.EXPAND,
-                'float64':wx.EXPAND,
+                'bool':wx.ALIGN_LEFT,
+                'int':wx.EXPAND,
+                'str':wx.EXPAND,
+                'double':wx.EXPAND,
                 }
-        for name, type in zip(config.config.__slots__, config.config._slot_types):
-            dir(config.config)
-            val = config.config.__getattribute__(name)
-            min = config.min.__getattribute__(name)
-            max = config.max.__getattribute__(name)
+        for param_descr in descr:
+            name = param_descr['name']
+            type = param_descr['type']
+            val = config[name]
+            min = param_descr['min']
+            max = param_descr['max']
             sizer.Add(wx.StaticText(self, wx.ID_ANY, name+":"),1,
                     wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT)
             sizer.Add(DynamicReconfigureWidget[type](self, name, val, min, max),0,flags[type])
@@ -248,6 +249,7 @@ if __name__ == '__main__':
         print "usage: reconfigure_gui.py <node_name>"
         exit(1)
     app = wx.PySimpleApp()
+    rospy.init_node("reconfigure_gui", anonymous=True)
     if len(argv) == 2:
         frame=MainWindow(argv[1])
     else:

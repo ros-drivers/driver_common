@@ -212,7 +212,8 @@ ${doline} ${linenum} "${filename}"
 
     ${configname}Config()
     {
-      __init_statics__();
+      if (this != &__min__ && this != &__max__ && this != &__default__)
+				__init_statics__(); // These three need to be initialized before we can initialize.
     }
 
   private:
@@ -248,7 +249,7 @@ ${doline} ${linenum} "${filename}"
     }
   };
 
-  bool ${configname}Config::__initialized__ = true;
+  bool ${configname}Config::__initialized__ = false;
   boost::mutex ${configname}Config::__init_mutex__;
   std::vector<${configname}Config::AbstractParamDescriptionConstPtr> ${configname}Config::__param_descriptions__;
   ${configname}Config ${configname}Config::__max__;

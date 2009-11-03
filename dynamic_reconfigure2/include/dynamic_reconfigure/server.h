@@ -46,7 +46,7 @@
 #define __SERVER_H__
 
 #include <boost/function.hpp>
-#include <boost/thread/mutex.hpp>
+#include <boost/thread/recursive_mutex.hpp>
 #include <ros/node_handle.h>
 #include <dynamic_reconfigure2/ConfigDescription.h>
 #include <dynamic_reconfigure2/Reconfigure.h>
@@ -70,11 +70,10 @@ public:
     set_service_ = node_handle_.advertiseService("set_parameters",
         &Server<ConfigType>::setConfigCallback, this);
     
-    descr_pub_ = node_handle_.advertise<dynamic_reconfigure2::ConfigDescription>
-      ("parameter_description", 1, true);
+    descr_pub_ = node_handle_.advertise<dynamic_reconfigure2::ConfigDescription>("parameter_descriptions", 1, true);
     descr_pub_.publish(ConfigType::__getDescriptionMessage__());
     
-    update_pub_ = node_handle_.advertise<dynamic_reconfigure2::Config>("parameter_changes", 1, true);
+    update_pub_ = node_handle_.advertise<dynamic_reconfigure2::Config>("parameter_updates", 1, true);
     ConfigType init_config = ConfigType::__getDefault__();
     init_config.__fromServer__(node_handle_);
     init_config.__clamp__();
@@ -85,7 +84,7 @@ public:
   
   void setCallback(CallbackType &callback)
   {
-    boost::mutex::scoped_lock lock(mutex_);
+    boost::recursive_mutex::scoped_lock lock(mutex_);
     callback_ = callback;
     if (callback) // At startup we need to load the configuration with all level bits set. (Everything has changed.)
       callback(config_, ~0);
@@ -95,13 +94,13 @@ public:
 
   void clearCallback()
   {
-    boost::mutex::scoped_lock lock(mutex_);
+    boost::recursive_mutex::scoped_lock lock(mutex_);
     callback_.clear();
   }
 
   void updateConfig(const ConfigType &config)
   {
-    boost::mutex::scoped_lock lock(mutex_);
+    boost::recursive_mutex::scoped_lock lock(mutex_);
     config_ = config;
     config_.__toServer__(node_handle_);
     dynamic_reconfigure2::Config msg;
@@ -116,12 +115,12 @@ private:
   ros::Publisher descr_pub_;
   CallbackType callback_;
   ConfigType config_;
-  boost::mutex mutex_;
+  boost::recursive_mutex mutex_;
 
   bool setConfigCallback(dynamic_reconfigure2::Reconfigure::Request &req, 
           dynamic_reconfigure2::Reconfigure::Response &rsp)
   {
-    boost::mutex::scoped_lock lock(mutex_);
+    boost::recursive_mutex::scoped_lock lock(mutex_);
 
     ConfigType new_config;
     new_config.__fromMessage__(req.config);

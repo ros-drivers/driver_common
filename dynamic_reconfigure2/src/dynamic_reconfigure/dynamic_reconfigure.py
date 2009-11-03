@@ -34,51 +34,124 @@
 #***********************************************************
 
 
-import roslib; roslib.load_manifest('dynamic_reconfigure')
+import roslib; roslib.load_manifest('dynamic_reconfigure2')
 import rospy
-import rosservice
+import rosservice                  
+import threading
+from dynamic_reconfigure2.srv import Reconfigure as ReconfigureSrv
+from dynamic_reconfigure2.msg import Config as ConfigMsg
+from dynamic_reconfigure2.msg import ConfigDescription as ConfigDescrMsg
+from dynamic_reconfigure2.msg import IntParameter, BoolParameter, StrParameter, DoubleParameter
 
 def find_reconfigure_services():
     services = rosservice.get_service_list()
-    getters = set()
-    setters = set()
+    found = []
     for i in range(0, len(services)):
         ## @todo This check can be fooled, but will be sufficient for now.
-        if services[i].endswith('/get_configuration'):
-            getters.add(services[i][0:-18])
-        if services[i].endswith('/set_configuration'):
-            setters.add(services[i][0:-18])
-    return list(getters & setters)
+        if services[i].endswith('/set_parameters'):
+            #print services[i], rosservice.get_service_type(services[i])
+            found.append(services[i][0:-15])
+    return found
 
 class DynamicReconfigureClient:
-    def __init__(self, name, timeout = None):
+    def __init__(self, name, timeout = None, config_callback = None,
+            description_callback = None):
         self.name = name
-        (self.get_service, self.get_service_class) = self.get_service_proxy('get_configuration', timeout)
-        (self.set_service, self.set_service_class) = self.get_service_proxy('set_configuration', timeout)
+        self.set_service = self._get_service_proxy('set_parameters', timeout)
+        self.config = None
+        self.param_description = None
+        self.config_callback = config_callback
+        self.description_callback = description_callback
+        self.cv = threading.Condition();
+        self.description_callback_sub = self._get_subscriber('parameter_descriptions', 
+                        ConfigDescrMsg, self._description_callback)
+        self.change_callback_sub = self._get_subscriber('parameter_updates', 
+                        ConfigMsg, callback=self._parameter_callback)
     
-    def get_service_proxy(self, suffix, timeout):
-        service_name = rospy.resolve_name(self.name + '/' + suffix)
-        #print "waiting for service", service_name
-        rospy.wait_for_service(service_name, timeout)
-        #print service_name
-        service_class = rosservice.get_service_class_by_name(service_name)
-        #print service_class
-        return rospy.ServiceProxy(service_name, service_class), service_class
+    def get_configuration(self, wait=True):
+        self.cv.acquire()
+        while self.config == None:
+            self.cv.wait()
+        self.cv.release()
+        return self.config
 
-    def get_configuration(self):
-        return self.get_service()
+    def get_parameter_descriptions(self, wait=True):
+        self.cv.acquire()
+        while self.param_description == None:
+            self.cv.wait()
+        self.cv.release()
+        return self.param_description
 
     def update_configuration(self, dict):
-        config = self.get_configuration().config
+        config = ConfigMsg()
         #print
         #print dir(config.config)
         #config.__dict__[name] = value
         for k,v in dict.items():
-            config.__setattr__(k, v)
+            ## @todo add more checks here?
+            if type(v) == int:
+                config.ints.append(IntParameter(k, v))
+            elif type(v) == bool:
+                config.bools.append(BoolParameter(k, v))
+            elif type(v) == str:
+                config.strs.append(StrParameter(k, v))
+            elif type(v) == float:
+                config.doubles.append(DoubleParameter(k, v))
         #print config
-        req = self.set_service_class._request_class(config)
-        resp = self.set_service(req).config
-        return resp
+        resp = self.set_service(config).config
+        return self._decode_config(resp)
+    
+    def _get_subscriber(self, suffix, type, callback):
+        topic_name = rospy.resolve_name(self.name + '/' + suffix)
+        return rospy.Subscriber(topic_name, type, callback = callback)
+
+    def _get_service_proxy(self, suffix, timeout):
+        service_name = rospy.resolve_name(self.name + '/' + suffix)
+        #print "waiting for service", service_name
+        rospy.wait_for_service(service_name, timeout)
+        #print service_name
+        #service_class = rosservice.get_service_class_by_name(service_name)
+        #print service_class
+        return rospy.ServiceProxy(service_name, ReconfigureSrv)#, service_class
+
+    def _decode_config(self, config_encoded):
+        config = {}
+        for kv in config_encoded.bools + config_encoded.ints + config_encoded.strs + config_encoded.doubles:
+            config[kv.name] = kv.value
+        return config
+
+    def _parameter_callback(self, msg):
+        #print "Parameter callback"
+        self.config = self._decode_config(msg)
+        self.cv.acquire()
+        self.cv.notifyAll()
+        self.cv.release()
+        if self.description_callback:
+            self.description_callback(descr)
+
+    def _description_callback(self, msg):
+        #print "Description callback"
+        descr = []
+        mins = self._decode_config(msg.min)
+        maxes = self._decode_config(msg.max)
+        defaults = self._decode_config(msg.dflt)
+        for param in msg.parameters:
+            name = param.name
+            descr.append({
+                'name': name,
+                'min': mins[name],
+                'max': maxes[name],
+                'default': defaults[name],
+                'type': param.type,
+                'description': param.description,
+                'edit_method': param.edit_method,
+                })
+        self.param_description = descr
+        self.cv.acquire()
+        self.cv.notifyAll()
+        self.cv.release()
+        if self.config_callback:
+            self.config_callback(descr)
 
 class DynamicReconfigureServer:
     def __init__(self, type, callback):

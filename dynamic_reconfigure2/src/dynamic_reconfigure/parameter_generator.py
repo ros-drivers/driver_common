@@ -250,8 +250,7 @@ class ParameterGenerator:
             self.appendline(paramdescr, "__default__.${name} = $v;", param, "default")
             self.appendline(paramdescr, 
                     "__param_descriptions__.push_back(AbstractParamDescriptionConstPtr(new ParamDescription<${ctype}>(\"${name}\", \"${type}\", ${level}, "\
-                            "\"${description}\", \"${edit_method}\", &${configname}Config::${name})));", 
-                    param)
+                    "\"${description}\", \"${edit_method}\", &${configname}Config::${name})));", param)
         paramdescr = string.join(paramdescr, '\n')
         members = string.join(members, '\n')
         f.write(Template(template).substitute(uname=self.name.upper(), configname=self.name,

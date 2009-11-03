@@ -16,6 +16,7 @@ int main(int argc, char **argv)
   dynamic_reconfigure::Server<dynamic_reconfigure2::TestConfig> srv;
   dynamic_reconfigure::Server<dynamic_reconfigure2::TestConfig>::CallbackType f = boost::bind(&callback, _1, _2);
   srv.setCallback(f);
+  ROS_INFO("Starting to spin...");
   ros::spin();
   return 0;
 }
