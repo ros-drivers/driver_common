@@ -46,6 +46,7 @@ min = {}
 max = {}
 defaults = {}
 level = {}
+type = {}
 all_level = 0
 
 for param in config_description:
@@ -53,4 +54,5 @@ for param in config_description:
     max[param['name']] = param['max']
     defaults[param['name']] = param['default']
     level[param['name']] = param['level']
+    type[param['name']] = param['type']
     all_level = all_level | param['level']
