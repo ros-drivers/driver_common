@@ -41,7 +41,7 @@ import threading
 from dynamic_reconfigure2.srv import Reconfigure as ReconfigureSrv
 from dynamic_reconfigure2.msg import Config as ConfigMsg
 from dynamic_reconfigure2.msg import ConfigDescription as ConfigDescrMsg
-from dynamic_reconfigure2.msg import IntParameter, BoolParameter, StrParameter, DoubleParameter
+from dynamic_reconfigure2.msg import IntParameter, BoolParameter, StrParameter, DoubleParameter, ParamDescription
 
 def find_reconfigure_services():
     services = rosservice.get_service_list()
@@ -52,6 +52,39 @@ def find_reconfigure_services():
             #print services[i], rosservice.get_service_type(services[i])
             found.append(services[i][0:-15])
     return found
+
+def get_parameter_names(type):
+    return type.defaults.keys()
+
+def _encode_config(dict):
+    config = ConfigMsg()
+    for k,v in dict.items():
+        ## @todo add more checks here?
+        if type(v) == int:
+            config.ints.append(IntParameter(k, v))
+        elif type(v) == bool:
+            config.bools.append(BoolParameter(k, v))
+        elif type(v) == str:
+            config.strs.append(StrParameter(k, v))
+        elif type(v) == float:
+            config.doubles.append(DoubleParameter(k, v))
+    return config
+
+def _decode_config(config_encoded):
+    config = {}
+    for kv in config_encoded.bools + config_encoded.ints + config_encoded.strs + config_encoded.doubles:
+        config[kv.name] = kv.value
+    return config
+
+def _make_description(type):
+    descr = ConfigDescrMsg()
+    descr.max = _encode_config(type.max)
+    descr.min = _encode_config(type.min)
+    descr.dflt = _encode_config(type.defaults)
+    for param in type.config_description:
+        descr.parameters.append(ParamDescription(
+            param['name'], param['type'], param['level'], param['description'], param['edit_method']))
+    return descr
 
 class DynamicReconfigureClient:
     def __init__(self, name, timeout = None, config_callback = None,
@@ -83,23 +116,9 @@ class DynamicReconfigureClient:
         return self.param_description
 
     def update_configuration(self, dict):
-        config = ConfigMsg()
-        #print
-        #print dir(config.config)
-        #config.__dict__[name] = value
-        for k,v in dict.items():
-            ## @todo add more checks here?
-            if type(v) == int:
-                config.ints.append(IntParameter(k, v))
-            elif type(v) == bool:
-                config.bools.append(BoolParameter(k, v))
-            elif type(v) == str:
-                config.strs.append(StrParameter(k, v))
-            elif type(v) == float:
-                config.doubles.append(DoubleParameter(k, v))
-        #print config
+        config = _encode_config(dict)
         resp = self.set_service(config).config
-        return self._decode_config(resp)
+        return _decode_config(resp)
     
     def _get_subscriber(self, suffix, type, callback):
         topic_name = rospy.resolve_name(self.name + '/' + suffix)
@@ -114,15 +133,9 @@ class DynamicReconfigureClient:
         #print service_class
         return rospy.ServiceProxy(service_name, ReconfigureSrv)#, service_class
 
-    def _decode_config(self, config_encoded):
-        config = {}
-        for kv in config_encoded.bools + config_encoded.ints + config_encoded.strs + config_encoded.doubles:
-            config[kv.name] = kv.value
-        return config
-
     def _parameter_callback(self, msg):
         #print "Parameter callback"
-        self.config = self._decode_config(msg)
+        self.config = _decode_config(msg)
         self.cv.acquire()
         self.cv.notifyAll()
         self.cv.release()
@@ -132,9 +145,9 @@ class DynamicReconfigureClient:
     def _description_callback(self, msg):
         #print "Description callback"
         descr = []
-        mins = self._decode_config(msg.min)
-        maxes = self._decode_config(msg.max)
-        defaults = self._decode_config(msg.dflt)
+        mins = _decode_config(msg.min)
+        maxes = _decode_config(msg.max)
+        defaults = _decode_config(msg.dflt)
         for param in msg.parameters:
             name = param.name
             descr.append({
@@ -157,56 +170,54 @@ class DynamicReconfigureServer:
     def __init__(self, type, callback):
         self.type = type
         self.config = type.defaults
-        self.copy_from_parameter_server()
+        self.description = _make_description(type)
+        self._copy_from_parameter_server()
         self.callback = callback
-        self.get_service = rospy.Service('~get_configuration', type.GetClass, self.get_callback)
-        self.set_service = rospy.Service('~set_configuration', type.SetClass, self.set_callback)
-        self.clamp(self.config) 
-        self.change_config(self.config, type.all_level)
+        self._clamp(self.config) 
+        self.set_service = rospy.Service('~set_parameters', ReconfigureSrv, self._set_callback)
+        self.descr_topic = rospy.Publisher('~parameter_descriptions',ConfigDescrMsg, latch=True)
+        self.descr_topic.publish(self.description);
+        self.update_topic = rospy.Publisher('~parameter_updates',ConfigMsg,latch=True)
+        self._change_config(self.config, type.all_level)
 
-    def copy_from_parameter_server(self):
+    def _copy_from_parameter_server(self):
         for param in self.type.config_description:
             try:
-                self.config.__setattr__(param['name'],rospy.get_param("~"+param['name']))
+                self.config[param['name']] = rospy.get_param("~"+param['name'])
             except KeyError:
                 pass
 
-    def copy_to_parameter_server(self):
+    def _copy_to_parameter_server(self):
         for param in self.type.config_description:
-            rospy.set_param("~"+param['name'], self.config.__getattribute__(param['name']))
+            rospy.set_param("~"+param['name'], self.config[param['name']])
 
-    def change_config(self, config, level):
+    def _change_config(self, config, level):
+        self.update_topic.publish(_encode_config(config))
         self.config = self.callback(config, level)
-        self.copy_to_parameter_server()
+        self._copy_to_parameter_server()
         return self.config
    
-    def calc_level(self, config1, config2):
+    def _calc_level(self, config1, config2):
         level = 0
         for param in self.type.config_description:
-            if config1.__getattribute__(param['name']) != config2.__getattribute__(param['name']):
+            if config1[param['name']] != config2[param['name']]:
                 level = level | param['level']
         return level
 
-    def clamp(self, config): 
+    def _clamp(self, config): 
         for param in self.type.config_description: 
-            maxval = self.type.max.__getattribute__(param['name']) 
-            minval = self.type.min.__getattribute__(param['name']) 
-            val = config.__getattribute__(param['name'])  
+            maxval = self.type.max[param['name']] 
+            minval = self.type.min[param['name']] 
+            val = config[param['name']]
             if val > maxval and maxval != "": 
                 config.__setattr__(param['name'], maxval) 
             elif val < minval and minval != "": 
                 config.__setattr__(param['name'], minval) 
 
-    def get_callback(self, req):
-        resp = self.type.GetClass._response_class()
-        resp.max = self.type.max
-        resp.min = self.type.min
-        resp.defaults = self.type.defaults
-        resp.config = self.config
-        return resp
-
-    def set_callback(self, req):
-        self.clamp(req.config)
-        return self.change_config(req.config, self.calc_level(req.config, self.config))
+    def _set_callback(self, req):
+        new_config = dict(self.config)
+        new_config.update(_decode_config(req.config))
+        self._clamp(new_config)
+        return _encode_config(self._change_config(new_config, self._calc_level(new_config, self.config)))
 
 

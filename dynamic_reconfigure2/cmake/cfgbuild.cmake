@@ -24,7 +24,6 @@ add_custom_target(rospack_gencfg ALL)
 macro(gencfg)
   add_custom_target(rospack_gencfg_real ALL)
   add_dependencies(rospack_gencfg_real rospack_gencfg)
-  # Need to do cfg then msg then srv.
   include_directories(${PROJECT_SOURCE_DIR}/cfg/cpp)
 endmacro(gencfg)
 

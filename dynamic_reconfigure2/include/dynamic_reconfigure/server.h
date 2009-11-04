@@ -122,7 +122,7 @@ private:
   {
     boost::recursive_mutex::scoped_lock lock(mutex_);
 
-    ConfigType new_config;
+    ConfigType new_config = config_;
     new_config.__fromMessage__(req.config);
     new_config.__clamp__();
     uint32_t level = config_.__level__(new_config);

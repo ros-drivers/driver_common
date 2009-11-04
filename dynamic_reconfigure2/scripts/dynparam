@@ -35,7 +35,7 @@
 
 NAME='dynparam'
 
-import roslib; roslib.load_manifest('dynamic_reconfigure')
+import roslib; roslib.load_manifest('dynamic_reconfigure2')
 import rospy
 import dynamic_reconfigure.dynamic_reconfigure as dynamic_reconfigure
 import sys
@@ -47,6 +47,7 @@ def print_usage():
 
     Commands:
     \tdynparam set\tconfigure node
+    \tdynparam paramset\tcopy dynparam parameters to node
     \tdynparam get\tget node configuration
     \tdynparam load\tload configuration from file
     \tdynparam dump\tdump configuration to file
@@ -56,11 +57,7 @@ def print_usage():
 
 def get_params(node):
     client = dynamic_reconfigure.DynamicReconfigureClient(node)
-    config = client.get_configuration().config
-    out = {}
-    for s in config.__slots__:
-      out[s] = config.__getattribute__(s)
-    return out
+    return client.get_configuration()
 
 def set_params(node, params):
     client = dynamic_reconfigure.DynamicReconfigureClient(node)
@@ -71,12 +68,26 @@ def do_list():
     for s in list:
         print s
 
+def do_paramset():
+    parser = OptionParser(usage="usage: %prog paramset [options] node", prog=NAME)
+    options, args = parser.parse_args(myargv[2:])
+    
+    if len(args) == 0:
+        parser.error("invalid arguments. Please specify a node name")
+    elif len(args) == 1:
+        node = args[0]
+    else:
+        parser.error("too many arguments")
+    
+    params = rospy.get_param("~")
+    set_params(node, params)
+
 def do_set():
-		print "Not implemented yet."
+    print "Not implemented yet."
 
 def do_get():
     parser = OptionParser(usage="usage: %prog get [options] node", prog=NAME)
-    options, args = parser.parse_args(sys.argv[2:])
+    options, args = parser.parse_args(myargv[2:])
 
     if len(args) == 0:
         parser.error("invalid arguments. Please specify a node name")
@@ -89,7 +100,7 @@ def do_get():
 
 def do_dump():
     parser = OptionParser(usage="usage: %prog dump [options] node file", prog=NAME)
-    options, args = parser.parse_args(sys.argv[2:])
+    options, args = parser.parse_args(myargv[2:])
 
     if len(args) == 0:
         parser.error("invalid arguments. Please specify a node name")
@@ -107,7 +118,7 @@ def do_dump():
 
 def do_load():
     parser = OptionParser(usage="usage: %prog load [options] node file", prog=NAME)
-    options, args = parser.parse_args(sys.argv[2:])
+    options, args = parser.parse_args(myargv[2:])
 
     if len(args) == 0:
         parser.error("invalid arguments. Please specify a node name")
@@ -124,15 +135,19 @@ def do_load():
     f.close()
 
 if __name__ == '__main__':
-    if len(sys.argv) == 1:
+    myargv = rospy.myargv()
+    if len(myargv) == 1:
       print_usage()
-    if sys.argv[1] == "list":
+    rospy.init_node("dynparam", anonymous=True)
+    if myargv[1] == "list":
       do_list()
-    if sys.argv[1] == "set":
+    if myargv[1] == "paramset":
+      do_paramset()
+    if myargv[1] == "set":
       do_set()
-    if sys.argv[1] == "get":
+    if myargv[1] == "get":
       do_get()
-    if sys.argv[1] == "load":
+    if myargv[1] == "load":
       do_load()
-    if sys.argv[1] == "dump":
+    if myargv[1] == "dump":
       do_dump()

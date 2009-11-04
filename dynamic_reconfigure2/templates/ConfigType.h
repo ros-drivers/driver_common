@@ -101,10 +101,10 @@ namespace ${pkgname}
           config.*field = min.*field;
       }
 
-      virtual void calcLevel(uint32_t &level, const ${configname}Config &config1, const ${configname}Config &config2) const
+      virtual void calcLevel(uint32_t &comb_level, const ${configname}Config &config1, const ${configname}Config &config2) const
       {
         if (config1.*field != config2.*field)
-          level |= level;
+          comb_level |= level;
       }
 
       virtual void fromServer(const ros::NodeHandle &nh, ${configname}Config &config) const
@@ -224,7 +224,7 @@ ${doline} ${linenum} "${filename}"
     static ${configname}Config __max__;
     static ${configname}Config __min__;
     static ${configname}Config __default__;
-    static ConfigDescription __description_message__;
+    static dynamic_reconfigure2::ConfigDescription __description_message__;
 
     static void __init_statics__()
     {
@@ -255,7 +255,7 @@ ${doline} ${linenum} "${filename}"
   ${configname}Config ${configname}Config::__max__;
   ${configname}Config ${configname}Config::__min__;
   ${configname}Config ${configname}Config::__default__;
-  ConfigDescription ${configname}Config::__description_message__;
+  dynamic_reconfigure2::ConfigDescription ${configname}Config::__description_message__;
   
   
   template <> // Max and min are ignored for strings.
