@@ -42,14 +42,16 @@
 
 */
 
-#ifndef __RECONFIGURATOR_H__
-#define __RECONFIGURATOR_H__
+#ifndef __SERVER_H__
+#define __SERVER_H__
 
 #include <boost/function.hpp>
+#include <boost/thread/recursive_mutex.hpp>
 #include <ros/node_handle.h>
+#include <dynamic_reconfigure/ConfigDescription.h>
+#include <dynamic_reconfigure/Reconfigure.h>
 
 /**
- * @todo Add checks that settings are within range.
  * @todo Add diagnostics.
  */
 
@@ -58,96 +60,81 @@ namespace dynamic_reconfigure
 /**
  * Keeps track of the reconfigure callback function.
  */
-class AbstractReconfigurator
+template <class ConfigType>  
+class Server
 {
 public:
-  AbstractReconfigurator()
+  Server(const ros::NodeHandle &nh = ros::NodeHandle("~")) :
+    node_handle_(nh)
   {
+    set_service_ = node_handle_.advertiseService("set_parameters",
+        &Server<ConfigType>::setConfigCallback, this);
+    
+    descr_pub_ = node_handle_.advertise<dynamic_reconfigure::ConfigDescription>("parameter_descriptions", 1, true);
+    descr_pub_.publish(ConfigType::__getDescriptionMessage__());
+    
+    update_pub_ = node_handle_.advertise<dynamic_reconfigure::Config>("parameter_updates", 1, true);
+    ConfigType init_config = ConfigType::__getDefault__();
+    init_config.__fromServer__(node_handle_);
+    init_config.__clamp__();
+    updateConfig(init_config);
   }
+
+  typedef boost::function<void(ConfigType &, uint32_t level)> CallbackType;
   
-  void setCallback(const boost::function<void(int level)> &callback)
+  void setCallback(CallbackType &callback)
   {
+    boost::recursive_mutex::scoped_lock lock(mutex_);
     callback_ = callback;
     if (callback) // At startup we need to load the configuration with all level bits set. (Everything has changed.)
-      callback(~0);
+      callback(config_, ~0);
     else
       ROS_INFO("setCallback did not call callback because it was zero."); /// @todo kill this line.
   }
 
   void clearCallback()
   {
+    boost::recursive_mutex::scoped_lock lock(mutex_);
     callback_.clear();
   }
 
-protected:
-  boost::function<void(int level)> callback_;
-};
-
-template <class ConfigManipulator>
-class Reconfigurator : public AbstractReconfigurator
-{
-public:
-  Reconfigurator(const ros::NodeHandle &nh) : node_handle_(nh)
+  void updateConfig(const ConfigType &config)
   {
-    config_ = ConfigManipulator::getDefaults();
-    ConfigManipulator::readFromParamServer(node_handle_, config_);
-    ConfigManipulator::clamp(config_);
-    // Write to make sure everything is filled in.
-    ConfigManipulator::writeToParamServer(node_handle_, config_);
-    
-    static const std::string get_config = "get_configuration";
-    get_service_ = node_handle_.advertiseService(get_config, &Reconfigurator<ConfigManipulator>::getConfigService, this);
-    static const std::string set_config = "set_configuration";
-    set_service_ = node_handle_.advertiseService(set_config, &Reconfigurator<ConfigManipulator>::setConfigService, this);
-  }
-
-  void getConfig(class ConfigManipulator::ConfigType &config)
-  {
-    config = config_;
-  }
-
-  void setConfig(const class ConfigManipulator::ConfigType &config)
-  {
+    boost::recursive_mutex::scoped_lock lock(mutex_);
     config_ = config;
-    ConfigManipulator::writeToParamServer(node_handle_, config_);
+    config_.__toServer__(node_handle_);
+    dynamic_reconfigure::Config msg;
+    config_.__toMessage__(msg);
+    update_pub_.publish(msg);
   }
 
 private:
-  bool getConfigService(typename ConfigManipulator::GetService::Request &req, 
-      typename ConfigManipulator::GetService::Response &rsp)
-  {
-    rsp.config = config_;
-    rsp.defaults = ConfigManipulator::getDefaults();
-    rsp.min = ConfigManipulator::getMin();
-    rsp.max = ConfigManipulator::getMax();
-    return true;
-  }
-
-  bool setConfigService(typename ConfigManipulator::SetService::Request &req, 
-      typename ConfigManipulator::SetService::Response &rsp)
-  {
-    class ConfigManipulator::ConfigType new_config = req.config;
-    ConfigManipulator::clamp(new_config);
-    int level = ConfigManipulator::getChangeLevel(new_config, config_);
-
-    
-    setConfig(new_config);
-
-    // We expect config_ to be read, and possibly written during the
-    // callback.
-    if (callback_)
-      callback_(level);
-    
-    rsp.config = config_;
-
-    return true;
-  }
-
-  class ConfigManipulator::ConfigType config_;
   ros::NodeHandle node_handle_;
-  ros::ServiceServer get_service_;
   ros::ServiceServer set_service_;
+  ros::Publisher update_pub_;
+  ros::Publisher descr_pub_;
+  CallbackType callback_;
+  ConfigType config_;
+  boost::recursive_mutex mutex_;
+
+  bool setConfigCallback(dynamic_reconfigure::Reconfigure::Request &req, 
+          dynamic_reconfigure::Reconfigure::Response &rsp)
+  {
+    boost::recursive_mutex::scoped_lock lock(mutex_);
+
+    ConfigType new_config = config_;
+    new_config.__fromMessage__(req.config);
+    new_config.__clamp__();
+    uint32_t level = config_.__level__(new_config);
+    
+    if (callback_)
+      callback_(new_config, level);
+
+    updateConfig(new_config);
+    new_config.__toMessage__(rsp.config);
+    return true;
+  }
 };
-                                 
+
 }
 #endif

@@ -49,6 +49,9 @@ import os
 import inspect
 import string 
 
+LINEDEBUG="#line"
+#LINEDEBUG="//#line"
+
 # Convenience names for types
 str_t = "str"
 bool_t = "bool"
@@ -85,8 +88,9 @@ class ParameterGenerator:
             return
         # Check that value type is compatible with type.
         pytype = { 'str':str, 'int':int, 'double':float, 'bool':bool }[param['type']]
+        param['ctype'] = { 'str':'std::string', 'int':'int', 'double':'double', 'bool':'bool' }[param['type']]
         if value and pytype != type(value) and (pytype != float or type(value) != int):
-            raise TypeError("'%s' has type %s, but default is %s"%(param['name'], value, repr(value)))
+            raise TypeError("'%s' has type %s, but default is %s"%(param['name'], param['type'], repr(value)))
         # Do any necessary casting.
         param[field] = pytype(value)
     
@@ -94,7 +98,7 @@ class ParameterGenerator:
         self.parameters = []
         self.dynconfpath = roslib.packages.get_pkg_dir("dynamic_reconfigure")
 
-    def add(self, name, paramtype, level, description, default = None, min = None, max = None):
+    def add(self, name, paramtype, level, description, default = None, min = None, max = None, edit_method = ""):
         newparam = {
             'name' : name,
             'type' : paramtype,
@@ -105,7 +109,11 @@ class ParameterGenerator:
             'max' : max,
             'srcline' : inspect.currentframe().f_back.f_lineno,
             'srcfile' : inspect.getsourcefile(inspect.currentframe().f_back.f_code),
+            'edit_method' : edit_method,
         }
+        if type == str_t and (max != None or min != None):
+            raise Exception("Max or min specified for %s, which is of string type"%name)
+
         self.check_type(newparam, 'default', self.defval[paramtype])
         self.check_type(newparam, 'max', self.maxval[paramtype])
         self.check_type(newparam, 'min', self.minval[paramtype])
@@ -134,24 +142,28 @@ class ParameterGenerator:
         self.mkdirabs(path)
 
     def generate(self, pkgname, nodename, name):
-        self.pkgname = pkgname
-        self.pkgpath = roslib.packages.get_pkg_dir(pkgname)
-        self.name = name
-        self.nodename = nodename
-        self.msgname = name+"Config"
-        #print '**************************************************************'
-        #print '**************************************************************'
-        print Template("Generating reconfiguration files for $name in $pkgname").\
-                substitute(name=self.name, pkgname = self.pkgname)
-        #print '**************************************************************'
-        #print '**************************************************************'
-        self.generateconfigmanipulator()
-        self.generatemsg()
-        self.generatesetsrv()
-        self.generategetsrv()
-        self.generatedoc()
-        self.generateusage()
-        self.generatepy()
+        try:
+            self.pkgname = pkgname
+            self.pkgpath = roslib.packages.get_pkg_dir(pkgname)
+            self.name = name
+            self.nodename = nodename
+            self.msgname = name+"Config"
+            #print '**************************************************************'
+            #print '**************************************************************'
+            print Template("Generating reconfiguration files for $name in $pkgname").\
+                    substitute(name=self.name, pkgname = self.pkgname)
+            #print '**************************************************************'
+            #print '**************************************************************'
+            self.generatecpp()
+            self.generatedoc()
+            self.generateusage()
+            self.generatepy()
+            self.deleteobsolete()
+        except Exception, e:
+            print "Error building srv %s.srv"%name
+            import traceback
+            traceback.print_exc()
+            exit(1)
 
     def generatedoc(self):
         self.mkdir("dox")
@@ -210,12 +222,11 @@ class ParameterGenerator:
             val = ""
         else:
             val = self.crepr(param, param[value])
-        list.append(Template('      '+text).substitute(param, v=val))
-        #list.append(Template('#line $srcline "$srcfile"\n      '+text).substitute(param, v=val))
+        list.append(Template('${doline} $srcline "$srcfile"\n      '+text).safe_substitute(param, v=val, doline=LINEDEBUG, configname=self.name))
     
-    def generateconfigmanipulator(self):
+    def generatecpp(self):
         # Read the configuration manipulator template and insert line numbers and file name into template.
-        templatefile = os.path.join(self.dynconfpath, "templates", "ConfigReconfigurator.h")
+        templatefile = os.path.join(self.dynconfpath, "templates", "ConfigType.h")
         templatelines = []
         templatefilesafe = templatefile.replace('\\', '\\\\') # line directive does backslash expansion.
         curline = 1
@@ -227,73 +238,71 @@ class ParameterGenerator:
         template = ''.join(templatelines)
         
         # Write the configuration manipulator.
-        self.mkdir(os.path.join("cfg", "cpp", self.pkgname))
-        f = open(os.path.join(self.pkgpath, "cfg", "cpp", self.pkgname, self.name+"Reconfigurator.h"), 'w')
-        readparam = []
-        writeparam = []
-        changelvl = []
-        defminmax = []
-        clamp = ["initialize();"]
+        cfg_cpp_dir = os.path.join("cfg", "cpp", self.pkgname)
+        self.mkdir(cfg_cpp_dir)
+        f = open(os.path.join(self.pkgpath, cfg_cpp_dir, self.name+"Config.h"), 'w')
+        paramdescr = []
+        members = []
         for param in self.parameters:
-            self.appendline(defminmax, "min.$name = $v;", param, "min")
-            self.appendline(defminmax, "max.$name = $v;", param, "max")
-            self.appendline(defminmax, "defaults.$name = $v;", param, "default")
-            self.appendline(changelvl, "if (config1.$name != config2.$name) changelvl |= $level;", param)
-            if param['type'] != 'str':
-                self.appendline(clamp, "if (config.$name > max.$name) config.$name = max.$name;", param)
-                self.appendline(clamp, "if (config.$name < min.$name) config.$name = min.$name;", param)
-            # We introduce tmp_name because bool is not supported in a .msg file.
-            if param['type'] == 'bool':
-                self.appendline(writeparam, "bool tmp_$name = config.$name;", param)
-                self.appendline(writeparam, "nh.setParam(\"$name\", tmp_$name);", param)
-                self.appendline(readparam, "bool tmp_$name = config.$name;", param)
-                self.appendline(readparam, "nh.getParam(\"$name\", tmp_$name, true);", param)
-                self.appendline(readparam, "config.$name = tmp_$name;", param)
-            else:
-                self.appendline(writeparam, "nh.setParam(\"$name\", config.$name);", param)
-                self.appendline(readparam, "nh.getParam(\"$name\", config.$name, true);", param)
-        defminmax = string.join(defminmax, '\n')
-        changelvl = string.join(changelvl, '\n')
-        clamp = string.join(clamp, '\n')
-        writeparam = string.join(writeparam, '\n')
-        readparam = string.join(readparam, '\n')
-        f.write(Template(template).substitute(uname=self.name.upper(), name = self.name, 
-            pkgname = self.pkgname, readparam = readparam, writeparam = writeparam, 
-            changelvl = changelvl, clamp = clamp, defminmax = defminmax))
+            self.appendline(members, "${ctype} ${name};", param)
+            self.appendline(paramdescr, "__min__.${name} = $v;", param, "min")
+            self.appendline(paramdescr, "__max__.${name} = $v;", param, "max")
+            self.appendline(paramdescr, "__default__.${name} = $v;", param, "default")
+            self.appendline(paramdescr, 
+                    "__param_descriptions__.push_back(AbstractParamDescriptionConstPtr(new ParamDescription<${ctype}>(\"${name}\", \"${type}\", ${level}, "\
+                    "\"${description}\", \"${edit_method}\", &${configname}Config::${name})));", param)
+        paramdescr = string.join(paramdescr, '\n')
+        members = string.join(members, '\n')
+        f.write(Template(template).substitute(uname=self.name.upper(), configname=self.name,
+            pkgname = self.pkgname, paramdescr = paramdescr, members = members, doline = LINEDEBUG))
         f.close()
 
-    def msgtype(self, type):
-        return { 'int' : 'int32', 'bool' : 'int8', 'str' : 'string', 'double' : 'float64' }[type]
+    def deleteoneobsolete(self, file):
+         try:
+             os.unlink(file)
+         except OSError:
+             pass
 
-    def generatemsg(self):
-        self.mkdir("msg")
-        f = open(os.path.join(self.pkgpath, "msg", self.msgname+".msg"), 'w')
-        print >> f, "# This is an autogerenated file. Please do not edit."
-        print >> f, ""
-        for param in self.parameters:
-            print >> f, Template("$type $name # $description").substitute(param, type=self.msgtype(param['type']))
-        f.close()
+    def deleteobsolete(self): ### @todo remove this after the transition period.
+         self.deleteoneobsolete(os.path.join(self.pkgpath, "msg", self.msgname+".msg"))
+         self.deleteoneobsolete(os.path.join("msg", "cpp", self.pkgpath, "msg", self.msgname+".msg"))
+         self.deleteoneobsolete(os.path.join(self.pkgpath, "srv", "Get"+self.msgname+".srv"))
+         self.deleteoneobsolete(os.path.join("srv", "cpp", self.pkgpath, "srv", "Get"+self.msgname+".srv"))
+         self.deleteoneobsolete(os.path.join(self.pkgpath, "srv", "Set"+self.msgname+".srv"))
+         self.deleteoneobsolete(os.path.join("srv", "cpp", self.pkgpath, "srv", "Set"+self.msgname+".srv"))
 
-    def generategetsrv(self):
-        self.mkdir("srv")
-        f = open(os.path.join(self.pkgpath, "srv", "Get"+self.msgname+".srv"), 'w')
-        print >> f, "# This is an autogerenated file. Please do not edit."
-        print >> f, ""
-        print >> f, "---" 
-        print >> f, self.msgname, "config", "# Current configuration of node."
-        print >> f, self.msgname, "defaults", "# Minimum values where appropriate."
-        print >> f, self.msgname, "min", "# Minimum values where appropriate."
-        print >> f, self.msgname, "max", "# Maximum values where appropriate."
-        f.close()
-
-    def generatesetsrv(self):
-        self.mkdir("srv")
-        f = open(os.path.join(self.pkgpath, "srv", "Set"+self.msgname+".srv"), 'w')
-        print >> f, "# This is an autogerenated file. Please do not edit."
-        print >> f, self.msgname, "config", "# Requested node configuration."
-        print >> f, "---"        
-        print >> f, self.msgname, "config", "# What the node's configuration was actually set to."
-        f.close()
+#    def msgtype(self, type):
+#        return { 'int' : 'int32', 'bool' : 'int8', 'str' : 'string', 'double' : 'float64' }[type]
+#
+#    def generatemsg(self):
+#        self.mkdir("msg")
+#        f = open(os.path.join(self.pkgpath, "msg", self.msgname+".msg"), 'w')
+#        print >> f, "# This is an autogerenated file. Please do not edit."
+#        print >> f, ""
+#        for param in self.parameters:
+#            print >> f, Template("$type $name # $description").substitute(param, type=self.msgtype(param['type']))
+#        f.close()
+#
+#    def generategetsrv(self):
+#        self.mkdir("srv")
+#        f = open(os.path.join(self.pkgpath, "srv", "Get"+self.msgname+".srv"), 'w')
+#        print >> f, "# This is an autogerenated file. Please do not edit."
+#        print >> f, ""
+#        print >> f, "---" 
+#        print >> f, self.msgname, "config", "# Current configuration of node."
+#        print >> f, self.msgname, "defaults", "# Minimum values where appropriate."
+#        print >> f, self.msgname, "min", "# Minimum values where appropriate."
+#        print >> f, self.msgname, "max", "# Maximum values where appropriate."
+#        f.close()
+#
+#    def generatesetsrv(self):
+#        self.mkdir("srv")
+#        f = open(os.path.join(self.pkgpath, "srv", "Set"+self.msgname+".srv"), 'w')
+#        print >> f, "# This is an autogerenated file. Please do not edit."
+#        print >> f, self.msgname, "config", "# Requested node configuration."
+#        print >> f, "---"        
+#        print >> f, self.msgname, "config", "# What the node's configuration was actually set to."
+#        f.close()
     
     def generatepy(self):
         # Read the configuration manipulator template and insert line numbers and file name into template.

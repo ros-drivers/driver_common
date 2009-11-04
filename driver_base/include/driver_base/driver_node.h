@@ -41,8 +41,9 @@
 #include <ros/node_handle.h>
 #include <boost/thread.hpp>
 #include <boost/bind.hpp>
-#include <dynamic_reconfigure/SensorLevels.h>
+#include <driver_base/SensorLevels.h>
 #include <signal.h>
+#include <dynamic_reconfigure/server.h>
 
 namespace driver_base
 {
@@ -75,6 +76,7 @@ class DriverNode : public AbstractDriverNode
 public:
   typedef char state_t;
   typedef self_test::Dispatcher<DriverNode<Driver> > SelfTestType;
+  typedef typename Driver::Config Config;
  
 protected:
   // Hooks
@@ -89,7 +91,7 @@ protected:
   ros::NodeHandle private_node_handle_;
   SelfTestType self_test_;
   diagnostic_updater::Updater diagnostic_;
-  typename Driver::Reconfigurator reconfigurator_;
+  dynamic_reconfigure::Server<Config> reconfigure_server_;
   
   Driver driver_;
 
@@ -114,7 +116,7 @@ private:
 
   drv_state_t pre_self_test_driver_state_;
 
-  void reconfigure(int level)
+  void reconfigure(Config &config, uint32_t level)
   {
     /// @todo Move this into the Driver class?
     ROS_DEBUG("Reconfigure called at level %x.", level);
@@ -122,24 +124,23 @@ private:
     
     drv_state_t orig_state = driver_.getState();
   
-    if ((level | dynamic_reconfigure::SensorLevels::RECONFIGURE_STOP) == level)
+    if ((level | driver_base::SensorLevels::RECONFIGURE_STOP) == level)
     {
       driver_.stop();
       if (!driver_.isStopped())
         ROS_ERROR("Failed to stop streaming before reconfiguring. Reconfiguration may fail.");
     }
   
-    if ((level | dynamic_reconfigure::SensorLevels::RECONFIGURE_CLOSE) == level)
+    if ((level | driver_base::SensorLevels::RECONFIGURE_CLOSE) == level)
     {
       driver_.close();
       if (!driver_.isClosed())
         ROS_ERROR("Failed to close device before reconfiguring. Reconfiguration may fail.");
     }
   
-    reconfigurator_.getConfig(driver_.config_);
-    driver_.config_update();
+    driver_.config_update(config, level);
+    config = driver_.config_;
     reconfigureHook(level);
-    reconfigurator_.setConfig(driver_.config_);
   
     driver_.goState(orig_state);
 
@@ -340,14 +341,14 @@ private:
   }
   
 public:
-  
   virtual ~DriverNode() {}
 
   int spin()
   {
     prepareDiagnostics();
     prepareSelfTests();
-    reconfigurator_.setCallback(boost::bind(&DriverNode::reconfigure, this, _1));
+    typename dynamic_reconfigure::Server<Config>::CallbackType f = boost::bind(&DriverNode::reconfigure, this, _1, _2);
+    reconfigure_server_.setCallback(f);
     
     ros_thread_.reset(new boost::thread(boost::bind(&ros::spin)));
     /// @todo What happens if thread creation fails?
@@ -393,7 +394,7 @@ public:
     private_node_handle_("~"), 
     self_test_(this, node_handle_), 
     diagnostic_(node_handle_), 
-    reconfigurator_(ros::NodeHandle("~"))
+    reconfigure_server_(ros::NodeHandle("~"))
   {
     num_subscribed_topics_ = 0; /// @fixme this variable is hokey.
     exit_status_ = 0;

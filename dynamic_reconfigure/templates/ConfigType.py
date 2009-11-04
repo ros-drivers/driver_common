@@ -40,21 +40,17 @@
 ##  POSSIBILITY OF SUCH DAMAGE.
 ##**********************************************************/
 
-from ${pkgname}.srv import Get${name}Config as GetClass;
-from ${pkgname}.srv import Set${name}Config as SetClass;
-from ${pkgname}.msg import ${name}Config as MsgClass;
-
 config_description = ${pycfgdata}
 
-min = MsgClass();
-max = MsgClass();
-defaults = MsgClass();
-level = MsgClass();
+min = {}
+max = {}
+defaults = {}
+level = {}
 all_level = 0
 
 for param in config_description:
-    min.__setattr__(param['name'], param['min'])
-    max.__setattr__(param['name'], param['max'])
-    defaults.__setattr__(param['name'], param['default'])
-    level.__setattr__(param['name'], param['level'])
+    min[param['name']] = param['min']
+    max[param['name']] = param['max']
+    defaults[param['name']] = param['default']
+    level[param['name']] = param['level']
     all_level = all_level | param['level']

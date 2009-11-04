@@ -8,7 +8,7 @@
   <depend package="diagnostic_updater" />
   <depend package="dynamic_reconfigure" />
   <export>
-    <cpp cflags="-I${prefix}/include"/>
+    <cpp cflags="-I${prefix}/include -I${prefix}/msg/cpp"/>
   </export>
   <url>http://www.ros.org/wiki/driver_base</url>
 </package>
