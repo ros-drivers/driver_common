@@ -1,4 +1,0 @@
-Make gui update everything whenever anything changes and after set.
-Make dynparam work properly (new API + set from param)
-Get python server working.
-Get wge100 and hokuyo working.
