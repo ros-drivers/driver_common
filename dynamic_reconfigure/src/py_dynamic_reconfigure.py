@@ -33,6 +33,7 @@
 #*  POSSIBILITY OF SUCH DAMAGE.
 #***********************************************************
 
+from __future__ import with_statement
 
 import roslib; roslib.load_manifest('dynamic_reconfigure')
 import rospy
@@ -168,17 +169,19 @@ class DynamicReconfigureClient:
 
 class DynamicReconfigureServer:
     def __init__(self, type, callback):
-        self.type = type
-        self.config = type.defaults
-        self.description = _make_description(type)
-        self._copy_from_parameter_server()
-        self.callback = callback
-        self._clamp(self.config) 
-        self.set_service = rospy.Service('~set_parameters', ReconfigureSrv, self._set_callback)
-        self.descr_topic = rospy.Publisher('~parameter_descriptions',ConfigDescrMsg, latch=True)
-        self.descr_topic.publish(self.description);
-        self.update_topic = rospy.Publisher('~parameter_updates',ConfigMsg,latch=True)
-        self._change_config(self.config, type.all_level)
+        self.mutex = threading.Lock()
+        with self.mutex:
+            self.type = type
+            self.config = type.defaults
+            self.description = _make_description(type)
+            self._copy_from_parameter_server()
+            self.callback = callback
+            self._clamp(self.config) 
+            self.descr_topic = rospy.Publisher('~parameter_descriptions',ConfigDescrMsg, latch=True)
+            self.descr_topic.publish(self.description);
+            self.update_topic = rospy.Publisher('~parameter_updates',ConfigMsg,latch=True)
+            self._change_config(self.config, type.all_level)
+            self.set_service = rospy.Service('~set_parameters', ReconfigureSrv, self._set_callback)
 
     def _copy_from_parameter_server(self):
         for param in self.type.config_description:
@@ -215,9 +218,10 @@ class DynamicReconfigureServer:
                 config.__setattr__(param['name'], minval) 
 
     def _set_callback(self, req):
-        new_config = dict(self.config)
-        new_config.update(_decode_config(req.config))
-        self._clamp(new_config)
-        return _encode_config(self._change_config(new_config, self._calc_level(new_config, self.config)))
+        with self.mutex:
+            new_config = dict(self.config)
+            new_config.update(_decode_config(req.config))
+            self._clamp(new_config)
+            return _encode_config(self._change_config(new_config, self._calc_level(new_config, self.config)))
 
 
