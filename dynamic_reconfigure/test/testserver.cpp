@@ -3,11 +3,15 @@
 
 void callback(dynamic_reconfigure::TestConfig &config, uint32_t level)
 {
+  ROS_INFO("Reconfigure request : %i %f %s %i %i", config.int_, config.double_, config.str_.c_str(), (int) config.bool_, config.level);
+  
   config.int_ |= 1;
   config.double_ = -config.double_;
   config.str_ += "A";
   config.bool_ = !config.bool_;
   config.level = level;
+
+  ROS_INFO("Reconfigured to     : %i %f %s %i %i", config.int_, config.double_, config.str_.c_str(), (int) config.bool_, config.level);
 }
 
 int main(int argc, char **argv)
