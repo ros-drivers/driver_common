@@ -20,7 +20,6 @@ macro(get_cfgs cfgvar)
 endmacro(get_cfgs)
 
 add_custom_target(rospack_gencfg ALL)
-add_dependencies(rospack_genmsg rospack_gencfg)
 
 macro(gencfg)
   add_custom_target(rospack_gencfg_real ALL)
