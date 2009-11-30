@@ -16,7 +16,7 @@ rosbuild_init()
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
-rospack_add_gtest(test_trigger_matcher test/test_trigger_matcher.cpp)
+rosbuild_add_gtest(test_trigger_matcher test/test_trigger_matcher.cpp)
 
 #uncomment if you have defined messages
 #rosbuild_genmsg()
