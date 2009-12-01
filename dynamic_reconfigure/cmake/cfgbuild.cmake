@@ -59,7 +59,7 @@ macro(gencfg_cpp)
     # but the first output in add_custom_command.
     add_custom_command(OUTPUT ${_output_cpp} ${_output_dox} ${_output_usage} ${_output_py}
                        COMMAND ${gencfg_cpp_exe} ${_input}
-                       DEPENDS ${_input} ${gencfg_cpp_exe} ${ROS_MANIFEST_LIST} ${gencfg_build_files})
+                       DEPENDS ${_input} ${gencfg_cpp_exe} ${ROS_MANIFEST_LIST} ${gencfg_build_files} ${gencfg_extra_deps})
     list(APPEND _autogen ${_output_cpp} ${_output_msg} ${_output_getsrv} ${_output_setsrv} 
       ${_output_dox} ${_output_usage} ${_output_py})
   endforeach(_cfg)
