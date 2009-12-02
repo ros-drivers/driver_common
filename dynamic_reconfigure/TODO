@@ -1,0 +1,19 @@
+Python client
+- Add casting to the correct type.
+
+- Add optional timeouts to avoid hanging if the node is dead.
+
+GUI
+- Update the GUI if the node gets updated from somewhere other than the
+  GUI.
+- Allow a GUI to be made from a list of parameters that are not necessarily
+  all with the same node.
+- The GUI should never crash if nodes go down.
+- Refresh the list of nodes in the pulldown menu.
+
+Dynparam
+- Make its dump format compatible with rosparam.
+- Implement the set command.
+
+C++ client
+- Make it exist
