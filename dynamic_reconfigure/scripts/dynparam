@@ -69,7 +69,7 @@ def do_list():
         print s
 
 def do_paramset():
-    parser = OptionParser(usage="usage: %prog paramset [options] node", prog=NAME)
+    parser = OptionParser(usage="usage: %prog paramset [options] node\nexample: dynparam paramset wge100_camera _camera_url:=foo", prog=NAME)
     options, args = parser.parse_args(myargv[2:])
     
     if len(args) == 0:

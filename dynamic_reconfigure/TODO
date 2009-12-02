@@ -1,3 +1,7 @@
+General
+- Add support for lists of primitive types.
+- Add support for yaml parameters.
+
 Python client
 - Add casting to the correct type.
 
