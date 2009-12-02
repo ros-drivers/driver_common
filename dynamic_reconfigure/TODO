@@ -10,6 +10,7 @@ GUI
   all with the same node.
 - The GUI should never crash if nodes go down.
 - Refresh the list of nodes in the pulldown menu.
+- Add tooltips with the parameter description and default values.
 
 Dynparam
 - Make its dump format compatible with rosparam.
@@ -17,3 +18,6 @@ Dynparam
 
 C++ client
 - Make it exist
+
+Generator
+- Generate documentation in wiki format (let's wait for the format to stabilize)
