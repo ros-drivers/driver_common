@@ -15,6 +15,9 @@ GUI
 - The GUI should never crash if nodes go down.
 - Refresh the list of nodes in the pulldown menu.
 - Add tooltips with the parameter description and default values.
+- Add support for GUI hints.
+  - Advanced parameters.
+  - Enum for integers.
 
 Dynparam
 - Make its dump format compatible with rosparam.
