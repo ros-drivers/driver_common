@@ -197,6 +197,10 @@ class DynamicReconfigureServer:
     def _change_config(self, config, level):
         self.update_topic.publish(_encode_config(config))
         self.config = self.callback(config, level)
+        if self.config == None:
+            msg = "Reconfigure callback should return a possibly updated configuration."
+            rospy.logerr(msg)
+            raise Exception(msg)
         self._copy_to_parameter_server()
         return self.config
    
