@@ -217,9 +217,9 @@ class DynamicReconfigureServer:
             minval = self.type.min[param['name']] 
             val = config[param['name']]
             if val > maxval and maxval != "": 
-                config.__setattr__(param['name'], maxval) 
+                config[param['name']] = maxval 
             elif val < minval and minval != "": 
-                config.__setattr__(param['name'], minval) 
+                config[param['name']] = minval 
 
     def _set_callback(self, req):
         with self.mutex:
