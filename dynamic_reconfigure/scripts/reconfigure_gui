@@ -264,7 +264,12 @@ if __name__ == '__main__':
     else:
         frame=MainWindow()
     frame.Show()
-    frame.SetMinSize(frame.GetEffectiveMinSize())
+    try:
+        ## @todo This try-except block is a temporary work around for
+        # karmic, in which GetEffectiveMinSize apparently no longer exists.
+        frame.SetMinSize(frame.GetEffectiveMinSize())
+    except AttributeError:
+        pass 
     try:
         app.MainLoop()
     except KeyboardInterrupt, e:
