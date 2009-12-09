@@ -46,12 +46,12 @@ def print_usage():
     deleting parameters of a dynamically configurable node.
 
     Commands:
-    \tdynparam set\tconfigure node
-    \tdynparam paramset\tcopy dynparam parameters to node
-    \tdynparam get\tget node configuration
-    \tdynparam load\tload configuration from file
-    \tdynparam dump\tdump configuration to file
-    \tdynparam list\tlist configurable nodes
+    \tdynparam set       configure node
+    \tdynparam paramset  copy dynparam parameters to node
+    \tdynparam get       get node configuration
+    \tdynparam load      load configuration from file
+    \tdynparam dump      dump configuration to file
+    \tdynparam list      list configurable nodes
     """
     sys.exit(0)
 
