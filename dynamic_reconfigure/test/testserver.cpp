@@ -20,6 +20,7 @@ int main(int argc, char **argv)
   dynamic_reconfigure::Server<dynamic_reconfigure::TestConfig> srv;
   dynamic_reconfigure::Server<dynamic_reconfigure::TestConfig>::CallbackType f = boost::bind(&callback, _1, _2);
   srv.setCallback(f);
+  ROS_INFO("Constants are: %i %f %s %i", dynamic_reconfigure::Test_int_const, dynamic_reconfigure::Test_double_const, dynamic_reconfigure::Test_str_const, (int) dynamic_reconfigure::Test_bool_const);
   ROS_INFO("Starting to spin...");
   ros::spin();
   return 0;

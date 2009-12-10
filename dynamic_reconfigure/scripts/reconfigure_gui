@@ -42,6 +42,42 @@ import wx
 import unicodedata    
 import math
 
+#        self.combobox = wx.ComboBox(self, wx.ID_ANY, choices = dynamic_reconfigure.find_reconfigure_services(), 
+#            style=wx.CB_READONLY)
+#        self.sizer.Add(self.combobox, flag = wx.EXPAND)
+#        self.Bind(wx.EVT_COMBOBOX, self.change)
+#        self.SetSizer(self.sizer)
+#        self.reconfigurator = None
+#
+#    def change(self, event):
+#        node = unicodedata.normalize('NFKD', self.combobox.GetValue()).encode('ascii','ignore')
+#        if self.reconfigurator:
+#            self.sizer.Remove(self.reconfigurator)
+#        self.reconfigurator = DynamicReconfigurePanel(self, node)
+#        self.sizer.Add(self.reconfigurator, 1, wx.EXPAND|wx.ALL, 5)
+#        self.sizer.Layout()
+class DynamicReconfigureEnum(wx.ComboBox):
+    def __init__(self, parent, name, val, enum):
+        self.name = name
+        self.to_value = dict((item['name'], item['value']) for item in enum)
+        self.to_name = dict((item['value'], item['name']) for item in enum)
+        wx.ComboBox.__init__(self, parent, wx.ID_ANY, self.to_name[val], choices = self.to_value.keys(), style=wx.CB_READONLY)
+        self.old_value = val
+        self.Bind(wx.EVT_COMBOBOX, self._update)
+
+    def update_value(self, value):
+        self.old_value = value
+        try:
+          new_name = self.to_name[value]
+        except:
+          new_name = ""
+        self.SetValue(new_name)
+
+    def _update(self, event):
+        newvalue = self.to_value[self.GetValue()]
+        if newvalue != self.old_value:
+          self.GetParent().reconf.update_configuration({ self.name: newvalue })
+
 class DynamicReconfigureBoolean(wx.CheckBox):
     def __init__(self, parent, name, value, min, max):
         self.name = name
@@ -51,14 +87,14 @@ class DynamicReconfigureBoolean(wx.CheckBox):
         self.Bind(wx.EVT_CHECKBOX, self._update)
                                          
     def update_value(self, value):
-        self.SetValue(value) 
         self.old_value = value
+        self.SetValue(value) 
 
     def _update(self, event):
         #print self.name, self.GetValue()
         new_value = self.GetValue()
         if new_value != self.old_value:
-          self.GetParent().reconf.update_configuration({ self.name:self.GetValue() })
+          self.GetParent().reconf.update_configuration({ self.name: newvalue })
 
 class DynamicReconfigureString(wx.TextCtrl):
     def __init__(self, parent, name, value, min, max):
@@ -69,8 +105,8 @@ class DynamicReconfigureString(wx.TextCtrl):
         self.Bind(wx.EVT_KILL_FOCUS, self._update)
     
     def update_value(self, value):
-        wx.TextCtrl.SetValue(self, value)
         self.old_value = value
+        wx.TextCtrl.SetValue(self, value)
 
     def _update(self, event):
         new_value = unicodedata.normalize('NFKD', self.GetValue()).encode('ascii','ignore')
@@ -205,18 +241,26 @@ class DynamicReconfigurePanel(wx.Panel):
             val = config[name]
             min = param_descr['min']
             max = param_descr['max']
+            #print param_descr['edit_method']
             sizer.Add(wx.StaticText(self, wx.ID_ANY, name+":"),1,
                     wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT)
-            self.widgets[name] = DynamicReconfigureWidget[type](self, name, val, min, max)
-            sizer.Add(self.widgets[name],0,flags[type])
+            try:
+              enum = eval(param_descr['edit_method'])['enum']
+              widget = DynamicReconfigureEnum(self, name, val, enum)
+            except:
+              widget = DynamicReconfigureWidget[type](self, name, val, min, max)
+            sizer.Add(widget,0,flags[type])
             #sizer.Add(wx.StaticLine(self), 1, wx.EXPAND)
             #sizer.Add(wx.StaticLine(self), 1, wx.EXPAND)
+            self.widgets[name] = widget
 
         self.SetSizer(sizer)
         self.initialized = True
         #self.Center()
 
     def _callback(self, config):
+      # @todo There is a race condition at startup. We may miss some
+      # updates that didn't get into the initial values.
       if self.initialized:
         for (name, widget) in self.widgets.iteritems():
           widget.update_value(config[name])
@@ -274,7 +318,7 @@ class MainWindow(wx.Frame):
         self.Raise()
 
     def on_timer(self, event):
-      print rospy.is_shutdown()
+      #print rospy.is_shutdown()
       if rospy.is_shutdown():
         self.Close(True)
         self.Refresh()

@@ -275,6 +275,8 @@ ${doline} ${linenum} "${filename}"
   {
     return;
   }
+
+${constants}
 }
     
 

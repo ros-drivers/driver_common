@@ -49,8 +49,8 @@ import os
 import inspect
 import string 
 
-LINEDEBUG="#line"
-#LINEDEBUG="//#line"
+#LINEDEBUG="#line"
+LINEDEBUG="//#line"
 
 # Convenience names for types
 str_t = "str"
@@ -80,23 +80,49 @@ class ParameterGenerator:
             'bool' : False,
             }
         
-    def check_type(self, param, field, default):
+    def pytype(self, drtype):
+        return { 'str':str, 'int':int, 'double':float, 'bool':bool }[drtype]
+
+
+    def check_type(self, param, field):
+        drtype = param['type']
+        name = param['name']
+        value = param[field]
+        pytype = self.pytype(drtype)
+        if pytype != type(value) and (pytype != float or type(value) != int):
+            raise TypeError("'%s' has type %s, but %s is %s"%(name, drtype, field, repr(value)))
+        param['ctype'] = { 'str':'std::string', 'int':'int', 'double':'double', 'bool':'bool' }[param['type']]
+        param['cconsttype'] = { 'str':'const char * const', 'int':'const int', 'double':'const double', 'bool':'const bool' }[param['type']]
+        param[field] = pytype(value)
+
+    def check_type_fill_default(self, param, field, default):
         value = param[field]
         # If no value, use default.
         if value == None:
             param[field] = default
             return
         # Check that value type is compatible with type.
-        pytype = { 'str':str, 'int':int, 'double':float, 'bool':bool }[param['type']]
-        param['ctype'] = { 'str':'std::string', 'int':'int', 'double':'double', 'bool':'bool' }[param['type']]
-        if value and pytype != type(value) and (pytype != float or type(value) != int):
-            raise TypeError("'%s' has type %s, but default is %s"%(param['name'], param['type'], repr(value)))
-        # Do any necessary casting.
-        param[field] = pytype(value)
+        self.check_type(param, field)
     
     def __init__(self):
         self.parameters = []
+        self.constants = []
         self.dynconfpath = roslib.packages.get_pkg_dir("dynamic_reconfigure")
+
+    def const(self, name, type, value):
+        newconst = { 
+                'name':name, 
+                'type':type, 
+                'value':value,
+                'srcline' : inspect.currentframe().f_back.f_lineno,
+                'srcfile' : inspect.getsourcefile(inspect.currentframe().f_back.f_code),
+                }
+        self.check_type(newconst, 'value')
+        self.constants.append(newconst)
+        return newconst # So that we can assign the value easily.
+
+    def enum(self, constants):
+        return repr({ 'enum' : constants }) 
 
     def add(self, name, paramtype, level, description, default = None, min = None, max = None, edit_method = ""):
         newparam = {
@@ -114,9 +140,9 @@ class ParameterGenerator:
         if type == str_t and (max != None or min != None):
             raise Exception("Max or min specified for %s, which is of string type"%name)
 
-        self.check_type(newparam, 'default', self.defval[paramtype])
-        self.check_type(newparam, 'max', self.maxval[paramtype])
-        self.check_type(newparam, 'min', self.minval[paramtype])
+        self.check_type_fill_default(newparam, 'default', self.defval[paramtype])
+        self.check_type_fill_default(newparam, 'max', self.maxval[paramtype])
+        self.check_type_fill_default(newparam, 'min', self.minval[paramtype])
         self.parameters.append(newparam)
 
     def mkdirabs(self, path, second_attempt = False):
@@ -243,6 +269,9 @@ class ParameterGenerator:
         f = open(os.path.join(self.pkgpath, cfg_cpp_dir, self.name+"Config.h"), 'w')
         paramdescr = []
         members = []
+        constants = []
+        for const in self.constants:
+            self.appendline(constants, "${cconsttype} ${configname}_${name} = $v;", const, "value")
         for param in self.parameters:
             self.appendline(members, "${ctype} ${name};", param)
             self.appendline(paramdescr, "__min__.${name} = $v;", param, "min")
@@ -253,8 +282,10 @@ class ParameterGenerator:
                     "\"${description}\", \"${edit_method}\", &${configname}Config::${name})));", param)
         paramdescr = string.join(paramdescr, '\n')
         members = string.join(members, '\n')
-        f.write(Template(template).substitute(uname=self.name.upper(), configname=self.name,
-            pkgname = self.pkgname, paramdescr = paramdescr, members = members, doline = LINEDEBUG))
+        constants = string.join(constants, '\n')
+        f.write(Template(template).substitute(uname=self.name.upper(), 
+            configname=self.name, pkgname = self.pkgname, paramdescr = paramdescr, 
+            members = members, doline = LINEDEBUG, constants = constants))
         f.close()
 
     def deleteoneobsolete(self, file):
