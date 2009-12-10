@@ -47,32 +47,37 @@ class DynamicReconfigureBoolean(wx.CheckBox):
         self.name = name
         wx.CheckBox.__init__(self, parent, wx.ID_ANY)
         self.SetValue(value)
-        self.Bind(wx.EVT_CHECKBOX, self.update)
+        self.old_value = value;
+        self.Bind(wx.EVT_CHECKBOX, self._update)
+                                         
+    def update_value(self, value):
+        self.SetValue(value) 
+        self.old_value = value
 
-    def update(self, event):
+    def _update(self, event):
         #print self.name, self.GetValue()
-        rslt = self.GetParent().reconf.update_configuration({ self.name:self.GetValue() })
-        self.SetValue(rslt[self.name])
+        new_value = self.GetValue()
+        if new_value != self.old_value:
+          self.GetParent().reconf.update_configuration({ self.name:self.GetValue() })
 
 class DynamicReconfigureString(wx.TextCtrl):
     def __init__(self, parent, name, value, min, max):
         self.name = name
         wx.TextCtrl.__init__(self, parent, wx.ID_ANY, style = wx.TE_PROCESS_ENTER)
         self.SetValue(value)
-        self.Bind(wx.EVT_TEXT_ENTER, self.update)
-        self.Bind(wx.EVT_KILL_FOCUS, self.update)
+        self.Bind(wx.EVT_TEXT_ENTER, self._update)
+        self.Bind(wx.EVT_KILL_FOCUS, self._update)
     
-    def SetValue(self, value):
+    def update_value(self, value):
         wx.TextCtrl.SetValue(self, value)
         self.old_value = value
 
-    def update(self, event):
+    def _update(self, event):
         new_value = unicodedata.normalize('NFKD', self.GetValue()).encode('ascii','ignore')
         if self.old_value == new_value:
             return
         #print self.name, new_value, repr(new_value)
-        rslt = self.GetParent().reconf.update_configuration({ self.name:new_value })
-        self.SetValue(rslt[self.name])
+        self.GetParent().reconf.update_configuration({ self.name:new_value })
         #print rslt
 
 class DynamicReconfigureInteger(wx.Panel):
@@ -84,68 +89,70 @@ class DynamicReconfigureInteger(wx.Panel):
         self.max = max
         
         sizer = wx.BoxSizer()
-        self.slider = wx.Slider(self, wx.ID_ANY, minValue = self.SliderValue(min), 
-                maxValue = self.SliderValue(max), style = wx.SL_AUTOTICKS | wx.SL_HORIZONTAL)
+        self.slider = wx.Slider(self, wx.ID_ANY, minValue = self._slider_value(min), 
+                maxValue = self._slider_value(max), style = wx.SL_AUTOTICKS | wx.SL_HORIZONTAL)
         sizer.Add(self.slider, wx.EXPAND)
         self.text = wx.TextCtrl(self, wx.ID_ANY, style = wx.TE_PROCESS_ENTER)
         sizer.Add(self.text)
         self.SetSizer(sizer)
 
-        self.slider.Bind(wx.EVT_SCROLL, self.SliderUpdate)
-        self.text.Bind(wx.EVT_TEXT_ENTER, self.TextUpdate)
-        self.text.Bind(wx.EVT_KILL_FOCUS, self.TextUpdate)
+        self.slider.Bind(wx.EVT_SCROLL, self._slider_update)
+        self.text.Bind(wx.EVT_TEXT_ENTER, self._text_update)
+        self.text.Bind(wx.EVT_KILL_FOCUS, self._text_update)
 
-        self.UpdateWidgets()
+        self._update_widgets()
 
-    def ChangeValue(self, new_value):
+    def update_value(self, value):
+        self.value = value
+        self._update_widgets()
+
+    def _change_value(self, new_value):
         if self.value == new_value:
             return
-        rslt = self.GetParent().reconf.update_configuration({ self.name:new_value })
-        self.value = rslt[self.name]
-        self.UpdateWidgets()
+        self.GetParent().reconf.update_configuration({ self.name:new_value })
     
-    def UpdateWidgets(self):
-        #print "UpdateWidgets", self.value
+    def _update_widgets(self):
+        #print "_update_widgets", self.value
         self.textvalue = str(self.value)
         self.text.SetValue(self.textvalue)
-        self.slidervalue = self.SliderValue(self.value)
+        self.slidervalue = self._slider_value(self.value)
         self.slider.SetValue(self.slidervalue)
         #print "set:", self.slidervalue, self.textvalue
     
-    def SliderValue(self, val):
+    def _slider_value(self, val):
         return val
         
-    def InvSliderValue(self, val):
+    def _inv_slider_value(self, val):
         return val
 
-    def TextValue(self, val):
+    def _text_value(self, val):
         return str(val)
     
-    def InvTextValue(self, val):
+    def _inv_text_value(self, val):
         return int(val)
     
-    def InvBoundTextValue(self, val):
+    def _inv_bound_text_value(self, val):
         try:
-            return min(max(self.InvTextValue(val), self.min), self.max)
+            return min(max(self._inv_text_value(val), self.min), self.max)
         except Exception, e:
             #print e
-            #print "InvTextValue failed"
+            #print "_inv_text_value failed"
             return self.value
 
-    def SliderUpdate(self, event):
+    def _slider_update(self, event):
         #print "get:", self.slider.GetValue()
         newslidervalue = self.slider.GetValue()
         if self.slidervalue == newslidervalue:
             return
-        self.ChangeValue(self.InvSliderValue(newslidervalue))
+        self._change_value(self._inv_slider_value(newslidervalue))
 
-    def TextUpdate(self, event):
+    def _text_update(self, event):
         newtextvalue = self.text.GetValue()
         if self.textvalue == newtextvalue:
             return
-        newvalue = self.InvBoundTextValue(newtextvalue)
-        #print "TextUpdate", self.text.GetValue(), self.min, self.max
-        self.ChangeValue(newvalue)
+        newvalue = self._inv_bound_text_value(newtextvalue)
+        #print "_text_update", self.text.GetValue(), self.min, self.max
+        self._change_value(newvalue)
 
 class DynamicReconfigureDouble(DynamicReconfigureInteger):
     def __init__(self, parent, name, value, min, max):
@@ -155,16 +162,16 @@ class DynamicReconfigureDouble(DynamicReconfigureInteger):
         self.offset = self.func(min)
         DynamicReconfigureInteger.__init__(self, parent, name, value, min, max)
     
-    def SliderValue(self, val):
+    def _slider_value(self, val):
         return int(round((self.func(val) - self.offset) / self.scale))
         
-    def InvSliderValue(self, val):
+    def _inv_slider_value(self, val):
         return self.ifunc(self.offset + val * self.scale)
 
-    def TextValue(self, val):
+    def _text_value(self, val):
         return str(val)
 
-    def InvTextValue(self, val):
+    def _inv_text_value(self, val):
         return float(val)
 
 DynamicReconfigureWidget = {
@@ -176,8 +183,9 @@ DynamicReconfigureWidget = {
                     
 class DynamicReconfigurePanel(wx.Panel):
     def __init__(self, parent, node):
+        self.initialized = False
         wx.Panel.__init__(self, parent, wx.ID_ANY)
-        self.reconf = dynamic_reconfigure.DynamicReconfigureClient(node, config_callback = self.callback)
+        self.reconf = dynamic_reconfigure.DynamicReconfigureClient(node, config_callback = self._callback)
         config = self.reconf.get_configuration()
         descr = self.reconf.get_parameter_descriptions()
         
@@ -190,6 +198,7 @@ class DynamicReconfigurePanel(wx.Panel):
                 'str':wx.EXPAND,
                 'double':wx.EXPAND,
                 }
+        self.widgets = {}
         for param_descr in descr:
             name = param_descr['name']
             type = param_descr['type']
@@ -198,12 +207,19 @@ class DynamicReconfigurePanel(wx.Panel):
             max = param_descr['max']
             sizer.Add(wx.StaticText(self, wx.ID_ANY, name+":"),1,
                     wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT)
-            sizer.Add(DynamicReconfigureWidget[type](self, name, val, min, max),0,flags[type])
+            self.widgets[name] = DynamicReconfigureWidget[type](self, name, val, min, max)
+            sizer.Add(self.widgets[name],0,flags[type])
             #sizer.Add(wx.StaticLine(self), 1, wx.EXPAND)
             #sizer.Add(wx.StaticLine(self), 1, wx.EXPAND)
 
         self.SetSizer(sizer)
+        self.initialized = True
         #self.Center()
+
+    def _callback(self, config):
+      if self.initialized:
+        for (name, widget) in self.widgets.iteritems():
+          widget.update_value(config[name])
 
 class DynamicReconfigureSelector(wx.Panel):
     def __init__(self, parent):
@@ -238,6 +254,10 @@ class MainWindow(wx.Frame):
         self.SetMenuBar(self.menubar)
         wx.EVT_MENU(self, wx.ID_EXIT, self.on_exit)
         
+        self.timer = wx.Timer(self, wx.ID_ANY)
+        self.Bind(wx.EVT_TIMER, self.on_timer, self.timer)
+        self.timer.Start(1000, False) # on_timer will be called once per second.
+        
         sizer = wx.BoxSizer(wx.VERTICAL)
         if node:
             sizer.Add(DynamicReconfigurePanel(self, node), 1, wx.EXPAND|wx.ALL, 5)
@@ -248,16 +268,23 @@ class MainWindow(wx.Frame):
 
     def on_exit(self, e):
         self.Close(True)
+        self.Refresh()
             
     def on_error(self):
         self.Raise()
-    
+
+    def on_timer(self, event):
+      print rospy.is_shutdown()
+      if rospy.is_shutdown():
+        self.Close(True)
+        self.Refresh()
+
 if __name__ == '__main__':
     argv = rospy.myargv()
     if (len(argv) > 2):
         print "usage: reconfigure_gui.py <node_name>"
         exit(1)
-    app = wx.PySimpleApp()
+    app = wx.PySimpleApp(clearSigInt = False)
     rospy.init_node("reconfigure_gui", anonymous=True)
     if len(argv) == 2:
         frame=MainWindow(argv[1])
