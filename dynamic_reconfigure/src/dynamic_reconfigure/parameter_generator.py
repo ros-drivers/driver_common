@@ -350,6 +350,10 @@ class ParameterGenerator:
         f = open(os.path.join(self.pkgpath, "src", self.pkgname, "cfg", self.name+"Config.py"), 'w')
         f.write(Template(template).substitute(name = self.name, 
             pkgname = self.pkgname, pycfgdata = self.parameters))
+        for const in self.constants:
+            f.write(Template("${configname}_${name} = $v\n").
+                    substitute(const, v = repr(const['value']), 
+                        configname=self.name))
         f.close()
 
         f = open(os.path.join(self.pkgpath, "src", self.pkgname, "cfg", "__init__.py"), 'a')
