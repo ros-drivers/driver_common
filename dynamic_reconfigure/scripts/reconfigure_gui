@@ -94,7 +94,7 @@ class DynamicReconfigureBoolean(wx.CheckBox):
         #print self.name, self.GetValue()
         new_value = self.GetValue()
         if new_value != self.old_value:
-          self.GetParent().reconf.update_configuration({ self.name: newvalue })
+          self.GetParent().reconf.update_configuration({ self.name: new_value })
 
 class DynamicReconfigureString(wx.TextCtrl):
     def __init__(self, parent, name, value, min, max):
