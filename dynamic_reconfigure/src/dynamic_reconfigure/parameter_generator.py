@@ -109,22 +109,23 @@ class ParameterGenerator:
         self.constants = []
         self.dynconfpath = roslib.packages.get_pkg_dir("dynamic_reconfigure")
 
-    def const(self, name, type, value):
+    def const(self, name, type, value, descr):
         newconst = { 
                 'name':name, 
                 'type':type, 
                 'value':value,
                 'srcline' : inspect.currentframe().f_back.f_lineno,
                 'srcfile' : inspect.getsourcefile(inspect.currentframe().f_back.f_code),
+                'description' : descr
                 }
         self.check_type(newconst, 'value')
         self.constants.append(newconst)
         return newconst # So that we can assign the value easily.
 
-    def enum(self, constants):
+    def enum(self, constants, description):
         if len(set(const['type'] for const in constants)) != 1:
             raise Exception("Inconsistent types in enum!")
-        return repr({ 'enum' : constants }) 
+        return repr({ 'enum' : constants, 'enum_description' : description }) 
 
     def add(self, name, paramtype, level, description, default = None, min = None, max = None, edit_method = ""):
         newparam = {
