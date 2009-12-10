@@ -122,6 +122,8 @@ class ParameterGenerator:
         return newconst # So that we can assign the value easily.
 
     def enum(self, constants):
+        if len(set(const['type'] for const in constants)) != 1:
+            raise Exception("Inconsistent types in enum!")
         return repr({ 'enum' : constants }) 
 
     def add(self, name, paramtype, level, description, default = None, min = None, max = None, edit_method = ""):
