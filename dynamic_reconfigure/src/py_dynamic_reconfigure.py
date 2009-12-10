@@ -140,8 +140,8 @@ class DynamicReconfigureClient:
         self.cv.acquire()
         self.cv.notifyAll()
         self.cv.release()
-        if self.description_callback:
-            self.description_callback(descr)
+        if self.config_callback:
+            self.config_callback(descr)
 
     def _description_callback(self, msg):
         #print "Description callback"
@@ -164,8 +164,8 @@ class DynamicReconfigureClient:
         self.cv.acquire()
         self.cv.notifyAll()
         self.cv.release()
-        if self.config_callback:
-            self.config_callback(descr)
+        if self.description_callback:
+            self.description_callback(descr)
 
 class DynamicReconfigureServer:
     def __init__(self, type, callback):
