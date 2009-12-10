@@ -195,13 +195,13 @@ class DynamicReconfigureServer:
             rospy.set_param("~"+param['name'], self.config[param['name']])
 
     def _change_config(self, config, level):
-        self.update_topic.publish(_encode_config(config))
         self.config = self.callback(config, level)
         if self.config == None:
             msg = "Reconfigure callback should return a possibly updated configuration."
             rospy.logerr(msg)
             raise Exception(msg)
         self._copy_to_parameter_server()
+        self.update_topic.publish(_encode_config(config))
         return self.config
    
     def _calc_level(self, config1, config2):
