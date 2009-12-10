@@ -141,7 +141,7 @@ class DynamicReconfigureClient:
         self.cv.notifyAll()
         self.cv.release()
         if self.config_callback:
-            self.config_callback(descr)
+            self.config_callback(self.config)
 
     def _description_callback(self, msg):
         #print "Description callback"
