@@ -353,7 +353,9 @@ public:
     ros_thread_.reset(new boost::thread(boost::bind(&ros::spin)));
     /// @todo What happens if thread creation fails?
     assert(ros_thread_);
-                     
+               
+    driver_.goRunning();
+
     /// @todo Do something about exit status?
     while (node_handle_.ok() && state_ != EXITING && !ctrl_c_hit_count_)
     {
@@ -365,6 +367,7 @@ public:
 
         if (!driver_.isRunning())
         {
+          sleep(1); /// @todo use a ROS sleep here?
           driver_.goClosed(); 
           driver_.goRunning();
         }
@@ -373,7 +376,7 @@ public:
       /// Will need some locking here or in diagnostic_updater?
       diagnostic_.update();
       self_test_.checkTest();
-      sleep(1); /// @todo use a ROS sleep here?
+      sleep(.1); /// @todo use a ROS sleep here?
     }
   
     driver_.goClosed();
