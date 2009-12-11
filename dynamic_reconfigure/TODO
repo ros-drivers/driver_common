@@ -1,27 +1,21 @@
-General
-- Add support for lists of primitive types.
-- Add support for yaml parameters.
-
 Python client
-- Add casting to the correct type.
-
-- Add optional timeouts to avoid hanging if the node is dead.
+- Add casting to the correct type
 
 GUI
-- Update the GUI if the node gets updated from somewhere other than the
-  GUI.
-- Allow a GUI to be made from a list of parameters that are not necessarily
-  all with the same node.
-- The GUI should never crash if nodes go down.
-- Refresh the list of nodes in the pulldown menu.
-- Add tooltips with the parameter description and default values.
-- Add support for GUI hints.
-  - Advanced parameters.
-  - Enum for integers.
+- Allow a GUI to be made from a list of parameters that are not necessarily all with the same node
+- Add support for GUI hints
+  - Advanced parameters
+  - Enum for integers
 
 Dynparam
-- Make its dump format compatible with rosparam.
-- Implement the set command.
+- Make its dump format compatible with rosparam
+- Implement the set command
+- Support enums
+
+General
+- Add support for lists of primitive types
+- Add support for yaml parameters
+- Add test server/client for Python (and client for C++)
 
 C++ client
 - Make it exist
