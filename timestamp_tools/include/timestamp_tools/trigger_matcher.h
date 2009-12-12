@@ -118,7 +118,7 @@ public:
 
   bool hasTimestamp()
   {
-    return trig_queue_.empty();
+    return !trig_queue_.empty();
   }
   
   virtual ~TriggerMatcherBase()

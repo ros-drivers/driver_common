@@ -2,6 +2,8 @@
 #include <gtest/gtest.h>
 #include <queue>
 
+/// @todo need to add a check for the hasTimestamp method.
+
 class QueuedChecker
 {
   std::queue< std::pair<double, int> > incoming_;
