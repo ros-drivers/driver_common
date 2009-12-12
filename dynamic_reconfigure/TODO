@@ -27,3 +27,4 @@ C++ client
 
 Generator
 - Generate documentation in wiki format (let's wait for the format to stabilize)
+- Check that enums don't contain the same value twice.
