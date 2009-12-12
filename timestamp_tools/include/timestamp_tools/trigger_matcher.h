@@ -116,6 +116,11 @@ public:
   static const ros::Time DropData;
   static const ros::Time RetryLater;
 
+  bool hasTimestamp()
+  {
+    return trig_queue_.empty();
+  }
+  
   virtual ~TriggerMatcherBase()
   {
   }
