@@ -39,6 +39,7 @@
 #include <ros/ros.h>
 #include <boost/function.hpp>
 #include <boost/thread/recursive_mutex.hpp>
+#include <stdarg.h>
 
 namespace driver_base
 {
