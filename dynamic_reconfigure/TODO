@@ -17,6 +17,11 @@ General
 - Add support for yaml parameters
 - Add test server/client for Python (and client for C++)
 
+C++ Server
+- The current error message when an unexpected parameter is found is
+  useless. It should just say which parameter is bad and why (unknown/bad
+  type)
+
 C++ client
 - Make it exist
 
