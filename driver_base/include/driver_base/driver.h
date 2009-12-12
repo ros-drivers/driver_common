@@ -81,6 +81,7 @@ protected:
   
 private:  
   std::string status_message_;
+  boost::mutex status_message_mutex_;
 
 public:
   void setPostOpenHook(hookFunction f)
@@ -241,13 +242,13 @@ public:
 
   const std::string getStatusMessage()
   { // Not returning by reference for thread safety.
-    boost::recursive_mutex::scoped_lock lock_(mutex_);
+    boost::mutex::scoped_lock lock_(status_message_mutex_);
     return status_message_;
   }
 
   void setStatusMessage(const std::string &msg)
   {
-    boost::recursive_mutex::scoped_lock lock_(mutex_);
+    boost::mutex::scoped_lock lock_(status_message_mutex_);
     ROS_DEBUG(msg.c_str());
     status_message_ = msg;
   }
