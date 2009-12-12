@@ -75,7 +75,6 @@ class DriverNode : public AbstractDriverNode
 {
 public:
   typedef char state_t;
-  typedef self_test::Dispatcher<DriverNode<Driver> > SelfTestType;
   typedef typename Driver::Config Config;
  
 protected:
@@ -89,7 +88,7 @@ protected:
   // Helper classes
   ros::NodeHandle node_handle_;
   ros::NodeHandle private_node_handle_;
-  SelfTestType self_test_;
+  self_test::Sequencer self_test_;
   diagnostic_updater::Updater diagnostic_;
   dynamic_reconfigure::Server<Config> reconfigure_server_;
   
@@ -217,24 +216,28 @@ private:
 
   void statusDiagnostic(diagnostic_updater::DiagnosticStatusWrapper& stat)
   {
-    stat.summary(0, "Driver is okay.");
+    if (driver_.isRunning())
+      stat.summary(0, "Driver is running.");
+    else
+      stat.summary(2, "Driver is not running.");
     
     stat.add("Driver state:", driver_.getStateName());
+    stat.add("Latest status message:", driver_.getStatusMessage());
     /// @fixme need to put something more useful here.
   }
 
   void prepareSelfTests()
   {
-    self_test_.add( "Interruption Test", &DriverNode::interruptionTest );
+    self_test_.add( "Interruption Test", this, &DriverNode::interruptionTest );
     addStoppedTests();
-    self_test_.add( "Connection Test", &DriverNode::openTest );
-    self_test_.add( "ID Test", &DriverNode::idTest );
+    self_test_.add( "Connection Test", this, &DriverNode::openTest );
+    self_test_.add( "ID Test", this, &DriverNode::idTest );
     addOpenedTests();
-    self_test_.add( "Start Streaming Test", &DriverNode::runTest );
+    self_test_.add( "Start Streaming Test", this, &DriverNode::runTest );
     addRunningTests();
-    self_test_.add( "Stop Streaming Test", &DriverNode::stopTest );
-    self_test_.add( "Disconnection Test", &DriverNode::closeTest );
-    self_test_.add( "Resume Activity", &DriverNode::resumeTest );
+    self_test_.add( "Stop Streaming Test", this, &DriverNode::stopTest );
+    self_test_.add( "Disconnection Test", this, &DriverNode::closeTest );
+    self_test_.add( "Resume Activity", this, &DriverNode::resumeTest );
   } 
 
   void interruptionTest(diagnostic_updater::DiagnosticStatusWrapper& status)
@@ -357,6 +360,7 @@ public:
     driver_.goRunning();
 
     /// @todo Do something about exit status?
+    std::string last_status_message;
     while (node_handle_.ok() && state_ != EXITING && !ctrl_c_hit_count_)
     {
       {
@@ -366,7 +370,13 @@ public:
         boost::recursive_mutex::scoped_lock lock_(driver_.mutex_);
 
         if (!driver_.isRunning())
-        {
+        {             
+          std::string new_status_message = driver_.getStatusMessage();
+          if (last_status_message != new_status_message)
+          {
+            ROS_ERROR(new_status_message.c_str());
+            last_status_message = new_status_message;
+          }
           sleep(1); /// @todo use a ROS sleep here?
           driver_.goClosed(); 
           driver_.goRunning();
@@ -395,8 +405,8 @@ public:
   DriverNode(ros::NodeHandle &nh) : 
     node_handle_(nh), 
     private_node_handle_("~"), 
-    self_test_(this, node_handle_), 
-    diagnostic_(node_handle_), 
+    self_test_(node_handle_), 
+    diagnostic_(), 
     reconfigure_server_(ros::NodeHandle("~"))
   {
     num_subscribed_topics_ = 0; /// @fixme this variable is hokey.

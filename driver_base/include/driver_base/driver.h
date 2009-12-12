@@ -77,6 +77,9 @@ protected:
 
   typedef boost::function< void() > hookFunction;
   hookFunction postOpenHook;
+  
+private:  
+  std::string status_message_;
 
 public:
   void setPostOpenHook(hookFunction f)
@@ -234,6 +237,30 @@ public:
 
   Driver() : state_(CLOSED) {}
   virtual ~Driver() {}
+
+  const std::string getStatusMessage()
+  { // Not returning by reference for thread safety.
+    boost::recursive_mutex::scoped_lock lock_(mutex_);
+    return status_message_;
+  }
+
+  void setStatusMessage(const std::string &msg)
+  {
+    boost::recursive_mutex::scoped_lock lock_(mutex_);
+    ROS_DEBUG(msg.c_str());
+    status_message_ = msg;
+  }
+
+  void setStatusMessagef(const char *format, ...)
+  {
+    va_list va;
+    char buff[1000]; // @todo This could be done more elegantly.
+    va_start(va, format);
+    if (vsnprintf(buff, sizeof(buff), format, va) >= (int) sizeof(buff))
+      ROS_DEBUG("Really long string in Driver::setStatusMessagef, it was trunccated.");
+    setStatusMessage(std::string(buff));
+    va_end(va);
+  }
 
 private:  
   const std::string &getTransitionName(void (Driver::*transition)())
