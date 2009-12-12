@@ -249,7 +249,7 @@ public:
   void setStatusMessage(const std::string &msg)
   {
     boost::mutex::scoped_lock lock_(status_message_mutex_);
-    ROS_DEBUG(msg.c_str());
+    ROS_DEBUG("%s", msg.c_str());
     status_message_ = msg;
   }
 
