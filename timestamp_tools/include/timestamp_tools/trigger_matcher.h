@@ -184,12 +184,11 @@ class TriggerMatcher : public TriggerMatcherBase
 private:
   boost::mutex data_source_mutex_;
   boost::condition_variable got_trigger_condition_;
-  bool volatile reset_flag_;
 
 protected:
   virtual void gotTrigger()
   {
-    got_trigger_condition_.notify_all();
+    got_trigger_condition_.notify_one();
   }
 
 public:
@@ -204,7 +203,6 @@ public:
   {
     boost::mutex::scoped_lock lock(mutex_);
 
-    reset_flag_ = true;
     got_trigger_condition_.notify_all();
     baseReset();
   }
@@ -214,36 +212,29 @@ public:
     boost::mutex::scoped_lock data_lock(data_source_mutex_);
     boost::mutex::scoped_lock lock(mutex_);
 
-    reset_flag_ = false;
+    ros::Time stamp = getTimestampNoblockPrelocked(t);
 
-    while (true)
-    {
-      ros::Time stamp = getTimestampNoblockPrelocked(t);
-
-      if (stamp != RetryLater)
-        return stamp;
-      
-      got_trigger_condition_.wait(lock);
-    }
+    if (stamp != RetryLater)
+      return stamp;
+    
+    got_trigger_condition_.wait(lock);
+    
+    return getTimestampNoblockPrelocked(t);
   }
 
   ros::Time getTimestampBlocking(const ros::Time &t, double timeout)
   {
     boost::mutex::scoped_lock data_lock(data_source_mutex_);
     boost::mutex::scoped_lock lock(mutex_);
-    boost::system_time end_time = boost::get_system_time() + boost::posix_time::seconds(timeout);
 
-    reset_flag_ = false;
+    ros::Time stamp = getTimestampNoblockPrelocked(t);
 
-    do
-    {
-      ros::Time stamp = getTimestampNoblockPrelocked(t);
+    if (stamp != RetryLater)
+      return stamp;
 
-      if (stamp != RetryLater)
-        return stamp;
-    } while (got_trigger_condition_.timed_wait(lock, end_time) && !reset_flag_);
+    got_trigger_condition_.timed_wait(lock, boost::posix_time::seconds(timeout));
     
-    return RetryLater;
+    return getTimestampNoblockPrelocked(t);
   }
 
   ros::Time getTimestampNoblock(const ros::Time &data_time)
