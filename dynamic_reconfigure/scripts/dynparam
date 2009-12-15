@@ -64,7 +64,18 @@ def do_paramset():
     set_params(node, params, timeout=options.timeout)
 
 def do_set():
-    print "Not implemented yet."
+    parser = OptionParser(usage="usage: %prog set [options] node parameter value\nexample: dynparam set wge100_camera _camera_url foo", prog=NAME)
+    add_timeout_option(parser)
+    options, args = parser.parse_args(myargv[2:])
+    if len(args) == 0:
+        parser.error("invalid arguments. Please specify a node name")
+    elif len(args) > 1:
+        parser.error("too many arguments")
+    node = args[0]
+    
+    connect()
+    print 'Not implemented yet.'   
+    #TODO
 
 def do_get():
     parser = OptionParser(usage="usage: %prog get [options] node", prog=NAME)
@@ -77,9 +88,12 @@ def do_get():
     node = args[0]
 
     connect()
-    params = get_params(node, timeout=options.timeout)
-    if params is not None:
-        print params 
+    try:
+        params = get_params(node, timeout=options.timeout)
+        if params is not None:
+            print params
+    except:
+        print 'Timeout exceeded.'
 
 def do_load():
     parser = OptionParser(usage="usage: %prog load [options] node file", prog=NAME)
@@ -163,3 +177,4 @@ if __name__ == '__main__':
         elif cmd == "get":      do_get()
         elif cmd == "load":     do_load()
         elif cmd == "dump":     do_dump()
+        else:                   print_usage()
