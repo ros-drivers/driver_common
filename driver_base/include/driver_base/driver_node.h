@@ -88,7 +88,7 @@ protected:
   // Helper classes
   ros::NodeHandle node_handle_;
   ros::NodeHandle private_node_handle_;
-  self_test::Sequencer self_test_;
+  self_test::TestRunner self_test_;
   diagnostic_updater::Updater diagnostic_;
   dynamic_reconfigure::Server<Config> reconfigure_server_;
   
