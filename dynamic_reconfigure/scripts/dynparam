@@ -44,25 +44,22 @@ from rospy import ROSException
 import py_dynamic_reconfigure as dynamic_reconfigure
 
 def do_list():
+    connect()
     list = dynamic_reconfigure.find_reconfigure_services()
     for s in list:
         print s
-
-def add_timeout_option(parser):
-    parser.add_option('-t', '--timeout', action='store', type='float', default=None, help='timeout in secs')   
 
 def do_paramset():
     parser = OptionParser(usage="usage: %prog paramset [options] node\nexample: dynparam paramset wge100_camera _camera_url:=foo", prog=NAME)
     add_timeout_option(parser)
     options, args = parser.parse_args(myargv[2:])
-    
     if len(args) == 0:
         parser.error("invalid arguments. Please specify a node name")
     elif len(args) > 1:
         parser.error("too many arguments")
-
     node = args[0]
     
+    connect()   
     params = rospy.get_param("~")
     set_params(node, params, timeout=options.timeout)
 
@@ -73,14 +70,13 @@ def do_get():
     parser = OptionParser(usage="usage: %prog get [options] node", prog=NAME)
     add_timeout_option(parser)
     options, args = parser.parse_args(myargv[2:])
-
     if len(args) == 0:
         parser.error("invalid arguments. Please specify a node name")
     elif len(args) > 1:
         parser.error("too many arguments")
-
     node = args[0]
 
+    connect()
     params = get_params(node, timeout=options.timeout)
     if params is not None:
         print params 
@@ -89,36 +85,34 @@ def do_load():
     parser = OptionParser(usage="usage: %prog load [options] node file", prog=NAME)
     add_timeout_option(parser)
     options, args = parser.parse_args(myargv[2:])
-
     if len(args) == 0:
         parser.error("invalid arguments. Please specify a node name")
     elif len(args) == 1:
         parser.error("invalid arguments. Please specify an output file")
     elif len(args) > 2:
         parser.error("too many arguments")
-
     node, path = args[0], args[1]
     
     f = file(path, 'r')
     params = eval(f.read())
     f.close()
 
+    connect()
     set_params(node, params, timeout=options.timeout)
 
 def do_dump():
     parser = OptionParser(usage="usage: %prog dump [options] node file", prog=NAME)
     add_timeout_option(parser)
     options, args = parser.parse_args(myargv[2:])
-
     if len(args) == 0:
         parser.error("invalid arguments. Please specify a node name")
     elif len(args) == 1:
         parser.error("invalid arguments. Please specify an output file")
     elif len(args) > 2:
         parser.error("too many arguments")
-
     node, path = args[0], args[1]
     
+    connect()
     params = get_params(node, timeout=options.timeout)
     if params is not None:
         f = file(path, 'w')
@@ -136,6 +130,9 @@ def set_params(node, params, timeout=None):
     client = dynamic_reconfigure.DynamicReconfigureClient(node, timeout=timeout)
     config = client.update_configuration(params)
 
+def add_timeout_option(parser):
+    parser.add_option('-t', '--timeout', action='store', type='float', default=None, help='timeout in secs')   
+
 def print_usage():
     print """dynparam is a command-line tool for getting, setting, and
 deleting parameters of a dynamically configurable node.
@@ -151,15 +148,15 @@ Commands:
 Type dynparam <command> -h for more detailed usage, e.g. 'dynparam get -h'
 """
 
+def connect():
+    rospy.init_node("dynparam", anonymous=True)
+
 if __name__ == '__main__':
     myargv = rospy.myargv()
     if len(myargv) == 1:
         print_usage()
     else:
-        rospy.init_node("dynparam", anonymous=True)
-        
-        cmd = myargv[1]
-        
+        cmd = myargv[1]       
         if   cmd == "list":     do_list()
         elif cmd == "paramset": do_paramset()
         elif cmd == "set":      do_set()
