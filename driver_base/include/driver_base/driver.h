@@ -41,6 +41,7 @@
 #include <boost/thread/recursive_mutex.hpp>
 #include <boost/thread/mutex.hpp>
 #include <stdarg.h>
+#include <cstdio>
 
 namespace driver_base
 {
