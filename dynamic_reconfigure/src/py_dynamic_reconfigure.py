@@ -142,8 +142,8 @@ class DynamicReconfigureClient(object):
 
         return self.param_description
 
-    def update_configuration(self, dict):
-        config = _encode_config(dict)
+    def update_configuration(self, changes):
+        config = _encode_config(changes)
         msg    = self._set_service(config).config
         resp   = _decode_config(msg)
 
@@ -265,8 +265,12 @@ class DynamicReconfigureServer(object):
                 config[param['name']] = minval 
 
     def _set_callback(self, req):
+        return _encode_config(self.update_configuration(_decode_config(req.config)))
+
+    def update_configuration(self, changes):
         with self.mutex:
             new_config = dict(self.config)
-            new_config.update(_decode_config(req.config))
+            new_config.update(changes)
             self._clamp(new_config)
-            return _encode_config(self._change_config(new_config, self._calc_level(new_config, self.config)))
+            return self._change_config(new_config, self._calc_level(new_config, self.config))
+
