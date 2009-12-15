@@ -377,7 +377,7 @@ public:
             ROS_ERROR(new_status_message.c_str());
             last_status_message = new_status_message;
           }
-          sleep(1); /// @todo use a ROS sleep here?
+          ros::WallDuration(1).sleep();
           driver_.goClosed(); 
           driver_.goRunning();
         }
@@ -386,7 +386,7 @@ public:
       /// Will need some locking here or in diagnostic_updater?
       diagnostic_.update();
       self_test_.checkTest();
-      sleep(.1); /// @todo use a ROS sleep here?
+      ros::WallDuration(0.1).sleep();
     }
   
     driver_.goClosed();
