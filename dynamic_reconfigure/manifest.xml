@@ -12,7 +12,8 @@
   <depend package="rosservice" />
   <rosdep name="wxpython" />
   <export>
-    <cpp cflags="`rosboost-cfg --cflags` -I${prefix}/include -I${prefix}/msg/cpp -I${prefix}/srv/cpp"
+      <rosdoc config="rosdoc.yaml" />
+      <cpp cflags="`rosboost-cfg --cflags` -I${prefix}/include -I${prefix}/msg/cpp -I${prefix}/srv/cpp"
          lflags="`rosboost-cfg --lflags thread`"/>
   </export>
 </package>

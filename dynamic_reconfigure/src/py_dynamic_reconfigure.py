@@ -93,7 +93,22 @@ def _decode_description(msg):
     return descr
 
 class DynamicReconfigureClient(object):
+    """
+    python dynamic_reconfigure client API
+    """
     def __init__(self, name, timeout=None, config_callback=None, description_callback=None):
+        """
+        connects to dynamic_reconfigure server and returns a client object
+        
+        @param name: name of the server to connect to (usually the node name)
+        @type  str
+        @param timeout: time to wait before giving up
+        @type float
+        @param config_callback: callback for server parameter changes
+        @param description_callback: internal use only as the API has not stabilized
+        @return a client object
+        @rtype DynamicReconfigureClient
+        """
         self.name              = name
         self.config            = None
         self.param_description = None
@@ -108,6 +123,15 @@ class DynamicReconfigureClient(object):
         self._descriptions_sub = self._get_subscriber('parameter_descriptions', ConfigDescrMsg, self._descriptions_msg)
 
     def get_configuration(self, timeout=None):
+        """
+        returns the latest received server configuration (waits to receive
+        one if none have been received)
+
+        @param timeout: time to wait before giving up
+        @type float
+        @returns dictionary mapping parameter names to values
+        @rtype dict of (str, value) pairs
+        """
         if timeout is None:
             with self._cv:
                 while self.config is None:
@@ -128,6 +152,14 @@ class DynamicReconfigureClient(object):
         return self.config
 
     def get_parameter_descriptions(self, timeout=None):
+        """
+        Returns a description of the parameters for the server.
+        Please do not use this method as the type that is returned may
+        change.
+        
+        @param timeout: time to wait before giving up
+        @type float
+        """
         if timeout is None:
             with self._cv:
                 while self.param_description is None:
@@ -148,6 +180,12 @@ class DynamicReconfigureClient(object):
         return self.param_description
 
     def update_configuration(self, changes):
+        """
+        change the server's configuration
+
+        @param changes: dictionary of key value pairs for the parameters that are changing
+        @type dict of (str, value) pairs
+        """
         if self.param_description is None:
             # Load the parameter description
             self.get_parameter_descriptions()
@@ -163,29 +201,41 @@ class DynamicReconfigureClient(object):
         return resp
     
     def _cast_parameter(self, name, value):
-        for param in self.param_description:
+        for param in self.param_description: # @todo this should get optimized by having a dict indexed by name.
             if param.get('name') == name:
                 dest_type = param.get('type')
-                if dest_type is not None and dest_type != type(value):
+                if dest_type is None:
+                    raise Exception('don\'t know the type for parameter %s. This is a bug in dynamic_reconfigure.'%name)
+                if dest_type != type(value):
                     if   dest_type == 'int':    return int(value)
                     elif dest_type == 'double': return float(value)
                     elif dest_type == 'str':    return str(value)
                     elif dest_type == 'bool':   return bool(value)
                     else:
-                        print 'unknown type: %s' % dest_type
+                        raise Exception('destination type has unknown typeunknown type: %s. '+
+                                        'This is a bug in dynamic_reconfigure.' % dest_type)
                     
         return value
 
     def close(self):
+        """
+        closes the connections to the server
+        """
         self._updates_sub.unregister()
         self._descriptions_sub.unregister()
 
     ## config_callback
 
     def get_config_callback(self):
+        """
+        retrieves the config_callback
+        """
         return self._config_callback
 
     def set_config_callback(self, value):
+        """
+        sets the config_callback
+        """
         self._config_callback = value
         if self._config_callback is not None:
             self._config_callback(self.config)
@@ -195,9 +245,16 @@ class DynamicReconfigureClient(object):
     ## description_callback        
 
     def get_description_callback(self):
+        """
+        Gets the current description_callback.
+        """
         return self._config_callback
 
     def set_description_callback(self, value):
+        """
+        Sets the description callback. Do not use as the type of the
+        description callback may change.
+        """
         self._description_callback = value
         if self._description_callback is not None:
             self._description_callback(self.param_description)
