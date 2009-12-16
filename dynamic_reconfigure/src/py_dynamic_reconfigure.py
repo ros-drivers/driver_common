@@ -114,11 +114,15 @@ class DynamicReconfigureClient(object):
         if timeout is None:
             with self._cv:
                 while self.config is None:
+                    if rospy.is_shutdown():
+                        return None
                     self._cv.wait()
         else:
             start_time = time.time()      
             with self._cv:
                 while self.config is None:
+                    if rospy.is_shutdown():
+                        return None
                     secs_left = timeout - (time.time() - start_time)
                     if secs_left <= 0.0:
                         break
@@ -130,11 +134,15 @@ class DynamicReconfigureClient(object):
         if timeout is None:
             with self._cv:
                 while self.param_description is None:
+                    if rospy.is_shutdown():
+                        return None
                     self._cv.wait()
         else:
             start_time = time.time()
             with self._cv:
                 while self.param_description is None:
+                    if rospy.is_shutdown():
+                        return None
                     secs_left = timeout - (time.time() - start_time)
                     if secs_left <= 0.0:
                         break
@@ -273,4 +281,3 @@ class DynamicReconfigureServer(object):
             new_config.update(changes)
             self._clamp(new_config)
             return self._change_config(new_config, self._calc_level(new_config, self.config))
-
