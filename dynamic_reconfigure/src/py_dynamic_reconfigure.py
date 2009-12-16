@@ -34,6 +34,11 @@
 #
 # Revision $Id$
 
+"""
+Python client API for dynamic_reconfigure (L{DynamicReconfigureClient}) as well as 
+example server implementation (L{DynamicReconfigureServer}).
+"""
+
 from __future__ import with_statement
 
 import roslib; roslib.load_manifest('dynamic_reconfigure')
@@ -94,20 +99,18 @@ def _decode_description(msg):
 
 class DynamicReconfigureClient(object):
     """
-    python dynamic_reconfigure client API
+    Python dynamic_reconfigure client API
     """
     def __init__(self, name, timeout=None, config_callback=None, description_callback=None):
         """
         Connect to dynamic_reconfigure server and return a client object
         
         @param name: name of the server to connect to (usually the node name)
-        @type  str
+        @type  name: str
         @param timeout: time to wait before giving up
-        @type float
+        @type  timeout: float
         @param config_callback: callback for server parameter changes
         @param description_callback: internal use only as the API has not stabilized
-        @return a client object
-        @rtype DynamicReconfigureClient
         """
         self.name              = name
         self.config            = None
@@ -130,9 +133,9 @@ class DynamicReconfigureClient(object):
         one if none have been received)
 
         @param timeout: time to wait before giving up
-        @type float
-        @returns dictionary mapping parameter names to values
-        @rtype dict of (str, value) pairs
+        @type  timeout: float
+        @return: dictionary mapping parameter names to values or None if unable to retrieve config.
+        @rtype: {str: value}
         """
         if timeout is None:
             with self._cv:
@@ -160,7 +163,7 @@ class DynamicReconfigureClient(object):
         change.
         
         @param timeout: time to wait before giving up
-        @type float
+        @type  timeout: float
         """
         if timeout is None:
             with self._cv:
@@ -186,7 +189,7 @@ class DynamicReconfigureClient(object):
         Change the server's configuration
 
         @param changes: dictionary of key value pairs for the parameters that are changing
-        @type dict of (str, value) pairs
+        @type  changes: {str: value}
         """
         # Retrieve the parameter descriptions
         if self.param_description is None:
