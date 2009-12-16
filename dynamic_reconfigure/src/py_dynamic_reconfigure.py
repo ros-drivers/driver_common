@@ -98,7 +98,7 @@ class DynamicReconfigureClient(object):
     """
     def __init__(self, name, timeout=None, config_callback=None, description_callback=None):
         """
-        connects to dynamic_reconfigure server and returns a client object
+        Connect to dynamic_reconfigure server and return a client object
         
         @param name: name of the server to connect to (usually the node name)
         @type  str
@@ -112,11 +112,13 @@ class DynamicReconfigureClient(object):
         self.name              = name
         self.config            = None
         self.param_description = None
+        
+        self._param_types = None
 
         self._cv = threading.Condition()
 
         self._config_callback      = config_callback
-        self._description_callback = description_callback       
+        self._description_callback = description_callback
 
         self._set_service      = self._get_service_proxy('set_parameters', timeout)       
         self._updates_sub      = self._get_subscriber('parameter_updates',      ConfigMsg,      self._updates_msg)
@@ -124,7 +126,7 @@ class DynamicReconfigureClient(object):
 
     def get_configuration(self, timeout=None):
         """
-        returns the latest received server configuration (waits to receive
+        Return the latest received server configuration (wait to receive
         one if none have been received)
 
         @param timeout: time to wait before giving up
@@ -153,7 +155,7 @@ class DynamicReconfigureClient(object):
 
     def get_parameter_descriptions(self, timeout=None):
         """
-        Returns a description of the parameters for the server.
+        Return a description of the parameters for the server.
         Please do not use this method as the type that is returned may
         change.
         
@@ -181,45 +183,33 @@ class DynamicReconfigureClient(object):
 
     def update_configuration(self, changes):
         """
-        change the server's configuration
+        Change the server's configuration
 
         @param changes: dictionary of key value pairs for the parameters that are changing
         @type dict of (str, value) pairs
         """
+        # Retrieve the parameter descriptions
         if self.param_description is None:
-            # Load the parameter description
             self.get_parameter_descriptions()
-            if self.param_description is not None:
-                # Cast the parameters to the appropriate types
-                for name, value in changes.items()[:]:
-                    changes[name] = self._cast_parameter(name, value)
+
+        # Cast the parameters to the appropriate types
+        if self.param_description is not None:
+            for name, value in changes.items()[:]:
+                dest_type = self._param_types.get(name)
+                if dest_type is None:
+                    raise Exception('don\'t know type for parameter: %s' % name)
+                
+                changes[name] = dest_type(value)
         
         config = _encode_config(changes)
         msg    = self._set_service(config).config
         resp   = _decode_config(msg)
 
         return resp
-    
-    def _cast_parameter(self, name, value):
-        for param in self.param_description: # @todo this should get optimized by having a dict indexed by name.
-            if param.get('name') == name:
-                dest_type = param.get('type')
-                if dest_type is None:
-                    raise Exception('don\'t know the type for parameter %s. This is a bug in dynamic_reconfigure.'%name)
-                if dest_type != type(value):
-                    if   dest_type == 'int':    return int(value)
-                    elif dest_type == 'double': return float(value)
-                    elif dest_type == 'str':    return str(value)
-                    elif dest_type == 'bool':   return bool(value)
-                    else:
-                        raise Exception('destination type has unknown typeunknown type: %s. '+
-                                        'This is a bug in dynamic_reconfigure.' % dest_type)
-                    
-        return value
 
     def close(self):
         """
-        closes the connections to the server
+        Close connections to the server
         """
         self._updates_sub.unregister()
         self._descriptions_sub.unregister()
@@ -228,13 +218,13 @@ class DynamicReconfigureClient(object):
 
     def get_config_callback(self):
         """
-        retrieves the config_callback
+        Retrieve the config_callback
         """
         return self._config_callback
 
     def set_config_callback(self, value):
         """
-        sets the config_callback
+        Set the config_callback
         """
         self._config_callback = value
         if self._config_callback is not None:
@@ -246,13 +236,13 @@ class DynamicReconfigureClient(object):
 
     def get_description_callback(self):
         """
-        Gets the current description_callback.
+        Get the current description_callback
         """
         return self._config_callback
 
     def set_description_callback(self, value):
         """
-        Sets the description callback. Do not use as the type of the
+        Set the description callback. Do not use as the type of the
         description callback may change.
         """
         self._description_callback = value
@@ -282,11 +272,26 @@ class DynamicReconfigureClient(object):
 
     def _descriptions_msg(self, msg):
         self.param_description = _decode_description(msg)
-        
+
+        # Build map from parameter name to type
+        self._param_types = {}
+        for p in self.param_description:
+            n, t = p.get('name'), p.get('type')
+            if n is not None and t is not None:
+                self._param_types[n] = self._param_type_from_string(t)
+
         with self._cv:
             self._cv.notifyAll()
         if self._description_callback is not None:
             self._description_callback(self.param_description)
+
+    def _param_type_from_string(self, type_str):
+        if   type_str == 'int':    return int
+        elif type_str == 'double': return float
+        elif type_str == 'str':    return str
+        elif type_str == 'bool':   return bool
+        else:
+            raise Exception('Parameter has unknown type: %s. This is a bug in dynamic_reconfigure.' % type_str)
 
 class DynamicReconfigureServer(object):
     def __init__(self, type, callback):
