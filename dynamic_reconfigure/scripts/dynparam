@@ -69,15 +69,19 @@ def do_set():
     parser = optparse.OptionParser(usage="usage: %prog set [options] node parameter value\nexample: dynparam set wge100_camera _camera_url foo", prog=NAME)
     add_timeout_option(parser)
     options, args = parser.parse_args(myargv[2:])
-    if len(args) == 0:
-        parser.error("invalid arguments. Please specify a node name")
-    elif len(args) > 1:
+    if len(args) < 3:
+        parser.error("invalid arguments. Please specify a node name, parameter name and parameter value")
+    elif len(args) > 3:
         parser.error("too many arguments")
-    node = args[0]
-    
+    node, parameter, value = args[0], args[1], args[2]
+
     connect()
-    print 'Not implemented yet.'
-    #TODO
+    try:
+        set_params(node, { parameter : value }, timeout=options.timeout)
+    except rospy.service.ServiceException:
+        print 'couldn\'t set parameters at node %s' % node
+    except rospy.exceptions.ROSException:
+        print 'couldn\'t set parameters at node %s' % node
 
 def do_get():
     parser = optparse.OptionParser(usage="usage: %prog get [options] node", prog=NAME)
@@ -101,7 +105,7 @@ def do_load():
     if len(args) == 0:
         parser.error("invalid arguments. Please specify a node name")
     elif len(args) == 1:
-        parser.error("invalid arguments. Please specify an output file")
+        parser.error("invalid arguments. Please specify an input file")
     elif len(args) > 2:
         parser.error("too many arguments")
     node, path = args[0], args[1]
