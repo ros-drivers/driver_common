@@ -47,7 +47,7 @@ from dynamic_reconfigure.msg import ConfigDescription as ConfigDescrMsg
 from dynamic_reconfigure.msg import IntParameter, BoolParameter, StrParameter, DoubleParameter, ParamDescription
 
 def find_reconfigure_services():
-    return [s[0:-15] for s in rosservice.get_service_list() if s.endswith('/set_parameters')] 
+    return [s[:-len('/set_parameters')] for s in rosservice.get_service_list() if s.endswith('/set_parameters')] 
 
 def get_parameter_names(descr):
     return descr.defaults.keys()
@@ -63,10 +63,7 @@ def _encode_config(config):
     return msg
 
 def _decode_config(msg):
-    config = {}
-    for kv in msg.bools + msg.ints + msg.strs + msg.doubles:
-        config[kv.name] = kv.value
-    return config
+    return dict([(kv.name, kv.value) for kv in msg.bools + msg.ints + msg.strs + msg.doubles])
 
 def _encode_description(descr):
     msg = ConfigDescrMsg()
@@ -151,11 +148,33 @@ class DynamicReconfigureClient(object):
         return self.param_description
 
     def update_configuration(self, changes):
+        if self.param_description is None:
+            # Load the parameter description
+            self.get_parameter_descriptions()
+            if self.param_description is not None:
+                # Cast the parameters to the appropriate types
+                for name, value in changes.items()[:]:
+                    changes[name] = self._cast_parameter(name, value)
+        
         config = _encode_config(changes)
         msg    = self._set_service(config).config
         resp   = _decode_config(msg)
 
         return resp
+    
+    def _cast_parameter(self, name, value):
+        for param in self.param_description:
+            if param.get('name') == name:
+                dest_type = param.get('type')
+                if dest_type is not None and dest_type != type(value):
+                    if   dest_type == 'int':    return int(value)
+                    elif dest_type == 'double': return float(value)
+                    elif dest_type == 'str':    return str(value)
+                    elif dest_type == 'bool':   return bool(value)
+                    else:
+                        print 'unknown type: %s' % dest_type
+                    
+        return value
 
     def close(self):
         self._updates_sub.unregister()

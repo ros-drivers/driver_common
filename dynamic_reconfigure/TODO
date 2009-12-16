@@ -1,6 +1,3 @@
-Python client
-- Add casting to the correct type
-
 GUI
 - Allow a GUI to be made from a list of parameters that are not necessarily all with the same node
 - Add support for GUI hints
