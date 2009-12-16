@@ -8,8 +8,6 @@ GUI
   - Enum for integers
 
 Dynparam
-- Make its dump format compatible with rosparam
-- Implement the set command
 - Support enums
 
 General
