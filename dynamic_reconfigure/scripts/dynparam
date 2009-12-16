@@ -35,12 +35,10 @@
 # Revision $Id$
 
 NAME='dynparam'
-
 import roslib; roslib.load_manifest('dynamic_reconfigure')
 import rospy
-from optparse import OptionParser
+import optparse 
 import sys
-from rospy import ROSException
 import py_dynamic_reconfigure as dynamic_reconfigure
 
 def do_list():
@@ -50,7 +48,7 @@ def do_list():
         print s
 
 def do_paramset():
-    parser = OptionParser(usage="usage: %prog paramset [options] node\nexample: dynparam paramset wge100_camera _camera_url:=foo", prog=NAME)
+    parser = optparse.OptionParser(usage="usage: %prog paramset [options] node\nexample: dynparam paramset wge100_camera _camera_url:=foo", prog=NAME)
     add_timeout_option(parser)
     options, args = parser.parse_args(myargv[2:])
     if len(args) == 0:
@@ -58,13 +56,16 @@ def do_paramset():
     elif len(args) > 1:
         parser.error("too many arguments")
     node = args[0]
-    
-    connect()   
-    params = rospy.get_param("~")
+
+    connect()
+    try:
+        params = rospy.get_param("~")
+    except KeyError:
+        return
     set_params(node, params, timeout=options.timeout)
 
 def do_set():
-    parser = OptionParser(usage="usage: %prog set [options] node parameter value\nexample: dynparam set wge100_camera _camera_url foo", prog=NAME)
+    parser = optparse.OptionParser(usage="usage: %prog set [options] node parameter value\nexample: dynparam set wge100_camera _camera_url foo", prog=NAME)
     add_timeout_option(parser)
     options, args = parser.parse_args(myargv[2:])
     if len(args) == 0:
@@ -78,7 +79,7 @@ def do_set():
     #TODO
 
 def do_get():
-    parser = OptionParser(usage="usage: %prog get [options] node", prog=NAME)
+    parser = optparse.OptionParser(usage="usage: %prog get [options] node", prog=NAME)
     add_timeout_option(parser)
     options, args = parser.parse_args(myargv[2:])
     if len(args) == 0:
@@ -88,15 +89,12 @@ def do_get():
     node = args[0]
 
     connect()
-    try:
-        params = get_params(node, timeout=options.timeout)
-        if params is not None:
-            print params
-    except:
-        print 'Timeout exceeded.'
+    params = get_params(node, timeout=options.timeout)
+    if params is not None:
+        print params
 
 def do_load():
-    parser = OptionParser(usage="usage: %prog load [options] node file", prog=NAME)
+    parser = optparse.OptionParser(usage="usage: %prog load [options] node file", prog=NAME)
     add_timeout_option(parser)
     options, args = parser.parse_args(myargv[2:])
     if len(args) == 0:
@@ -115,7 +113,7 @@ def do_load():
     set_params(node, params, timeout=options.timeout)
 
 def do_dump():
-    parser = OptionParser(usage="usage: %prog dump [options] node file", prog=NAME)
+    parser = optparse.OptionParser(usage="usage: %prog dump [options] node file", prog=NAME)
     add_timeout_option(parser)
     options, args = parser.parse_args(myargv[2:])
     if len(args) == 0:
