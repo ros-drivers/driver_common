@@ -39,6 +39,7 @@ import roslib; roslib.load_manifest('dynamic_reconfigure')
 import rospy
 import optparse 
 import sys
+import yaml
 import py_dynamic_reconfigure as dynamic_reconfigure
 
 def do_list():
@@ -75,7 +76,7 @@ def do_set():
     node = args[0]
     
     connect()
-    print 'Not implemented yet.'   
+    print 'Not implemented yet.'
     #TODO
 
 def do_get():
@@ -104,13 +105,18 @@ def do_load():
     elif len(args) > 2:
         parser.error("too many arguments")
     node, path = args[0], args[1]
-    
-    f = file(path, 'r')
-    params = eval(f.read())
-    f.close()
 
-    connect()
-    set_params(node, params, timeout=options.timeout)
+    f = file(path, 'r')
+    try:
+        params = {}
+        for doc in yaml.load_all(f.read()):
+            params.update(doc)
+    finally:
+        f.close()
+
+    if node in params:
+        connect()
+        set_params(node, params[node], timeout=options.timeout)
 
 def do_dump():
     parser = optparse.OptionParser(usage="usage: %prog dump [options] node file", prog=NAME)
@@ -128,10 +134,12 @@ def do_dump():
     params = get_params(node, timeout=options.timeout)
     if params is not None:
         f = file(path, 'w')
-        print >> f, params
-        f.close()
-        return
-   
+        try:
+            yaml.dump({ node : params }, f)
+            return
+        finally:
+            f.close()
+
     print "couldn't get parameters from node %s" % node
 
 def get_params(node, timeout=None):
