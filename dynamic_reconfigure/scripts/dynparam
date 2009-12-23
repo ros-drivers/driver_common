@@ -40,7 +40,7 @@ import rospy
 import optparse 
 import sys
 import yaml
-import py_dynamic_reconfigure as dynamic_reconfigure
+import dynamic_reconfigure
 
 def do_list():
     connect()
@@ -147,11 +147,11 @@ def do_dump():
     print "couldn't get parameters from node %s" % node
 
 def get_params(node, timeout=None):
-    client = dynamic_reconfigure.DynamicReconfigureClient(node, timeout=timeout)
+    client = dynamic_reconfigure.Client(node, timeout=timeout)
     return client.get_configuration(timeout=timeout)
     
 def set_params(node, params, timeout=None):
-    client = dynamic_reconfigure.DynamicReconfigureClient(node, timeout=timeout)
+    client = dynamic_reconfigure.Client(node, timeout=timeout)
     config = client.update_configuration(params)
 
 def add_timeout_option(parser):

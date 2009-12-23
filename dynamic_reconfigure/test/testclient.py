@@ -33,7 +33,7 @@
 
 import roslib; roslib.load_manifest('dynamic_reconfigure')
 import rospy
-import py_dynamic_reconfigure
+import dynamic_reconfigure
 import time
 
 # This example assumes that testserver in dynamic_reconfigure is running
@@ -78,8 +78,7 @@ def new_config_callback(config):
 # Note that the config_callback could get called before the constructor 
 # returns.
 rospy.init_node('testclient_py', anonymous=True)
-client = py_dynamic_reconfigure.DynamicReconfigureClient('/dynamic_reconfigure_test_server', 
-        config_callback = config_callback, timeout = 5)
+client = dynamic_reconfigure.Client('/dynamic_reconfigure_test_server', config_callback=config_callback, timeout=5)
 time.sleep(1)
 
 # You can also get the configuration manually by calling get_configuration.
