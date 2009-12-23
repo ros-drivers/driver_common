@@ -30,33 +30,49 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-"""
-Python client API for dynamic_reconfigure (L{Client}) as well as 
-example server implementation (L{Server}).
-"""
-
 import roslib; roslib.load_manifest('dynamic_reconfigure')
 import rospy
-import rosservice
 
-class DynamicReconfigureException(Exception):
-    """
-    dynamic_reconfigure base exception type
-    """
-    pass
-class DynamicReconfigureParameterException(DynamicReconfigureException):
-    """
-    Exception for parameter errors.
-    """
-    pass
-class DynamicReconfigureCallbackException(DynamicReconfigureException):
-    """
-    Exception for callback errors.
-    """
-    pass
+from dynamic_reconfigure.msg import Config as ConfigMsg
+from dynamic_reconfigure.msg import ConfigDescription as ConfigDescrMsg
+from dynamic_reconfigure.msg import IntParameter, BoolParameter, StrParameter, DoubleParameter, ParamDescription
 
-def find_reconfigure_services():
-    return [s[:-len('/set_parameters')] for s in rosservice.get_service_list() if s.endswith('/set_parameters')] 
+def encode_description(descr):
+    msg = ConfigDescrMsg()
+    msg.max = encode_config(descr.max)
+    msg.min = encode_config(descr.min)
+    msg.dflt = encode_config(descr.defaults)
+    for param in descr.config_description:
+        msg.parameters.append(ParamDescription(param['name'], param['type'], param['level'], param['description'], param['edit_method']))
+    return msg
 
-def get_parameter_names(descr):
-    return descr.defaults.keys()
+def encode_config(config):
+    msg = ConfigMsg()
+    for k, v in config.items():
+        ## @todo add more checks here?
+        if   type(v) == int:   msg.ints.append(IntParameter(k, v))
+        elif type(v) == bool:  msg.bools.append(BoolParameter(k, v))
+        elif type(v) == str:   msg.strs.append(StrParameter(k, v))
+        elif type(v) == float: msg.doubles.append(DoubleParameter(k, v))
+    return msg
+
+def decode_description(msg):
+    descr = []
+    mins = decode_config(msg.min)
+    maxes = decode_config(msg.max)
+    defaults = decode_config(msg.dflt)
+    for param in msg.parameters:
+        name = param.name
+        descr.append({
+            'name': name,
+            'min': mins[name],
+            'max': maxes[name],
+            'default': defaults[name],
+            'type': param.type,
+            'description': param.description,
+            'edit_method': param.edit_method,
+            })
+    return descr
+
+def decode_config(msg):
+    return dict([(kv.name, kv.value) for kv in msg.bools + msg.ints + msg.strs + msg.doubles])

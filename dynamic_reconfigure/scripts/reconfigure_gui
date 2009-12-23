@@ -45,7 +45,7 @@ import time
 import unicodedata
 import wx
 
-import dynamic_reconfigure
+import dynamic_reconfigure.client
 
 class MainWindow(wx.Frame):
     def __init__(self, node=None):
@@ -67,7 +67,7 @@ class MainWindow(wx.Frame):
         # Add reconfigure control
         if node:
             try:
-                reconf = dynamic_reconfigure.Client(node, timeout=5.0)
+                reconf = dynamic_reconfigure.client.Client(node, timeout=5.0)
             except:
                 print 'Can\'t connect to node %s' % node
                 self.Close()
@@ -129,7 +129,7 @@ class DynamicReconfigureSelector(wx.Panel):
         node = str(self.combobox.GetValue())
         
         try:
-            reconf = dynamic_reconfigure.Client(node, timeout=5.0)
+            reconf = dynamic_reconfigure.client.Client(node, timeout=5.0)
         except:
             if self.reconf_panel is None:
                 self.combobox.SetValue('')

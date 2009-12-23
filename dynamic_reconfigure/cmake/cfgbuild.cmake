@@ -39,7 +39,7 @@ macro(gencfg_cpp)
     set(_input ${PROJECT_SOURCE_DIR}/cfg/${_cfg})
   
     rosbuild_gendeps(${PROJECT_NAME} ${_cfg})
-  
+
     # The .cfg file is its own generator.
     set(gencfg_cpp_exe "")
     set(gencfg_build_files 
