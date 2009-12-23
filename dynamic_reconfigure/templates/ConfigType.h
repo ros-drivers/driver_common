@@ -50,6 +50,8 @@ ${doline} ${linenum} "${filename}"
 #include <dynamic_reconfigure/config_tools.h>
 #include <limits>
 #include <boost/thread/mutex.hpp>
+#include <dynamic_reconfigure/ConfigDescription.h>
+#include <dynamic_reconfigure/ParamDescription.h>
 
 namespace ${pkgname}
 {
