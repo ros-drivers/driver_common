@@ -6,10 +6,6 @@
  
   <ul>
    <li>
-     dynamic_reconfigure: A dynamic reconfiguration system to allow node 
-     parameters to be changed without restarting the node.
-   </li>
-   <li>
      driver_base: A base class for sensors to provide a consistent state machine
    (retries, error handling, etc.) and interface.
    </li>
