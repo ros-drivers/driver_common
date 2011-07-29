@@ -6,6 +6,10 @@
  
   <ul>
    <li>
+     dynamic_reconfigure: A dynamic reconfiguration system to allow node 
+     parameters to be changed without restarting the node.
+   </li>
+   <li>
      driver_base: A base class for sensors to provide a consistent state machine
    (retries, error handling, etc.) and interface.
    </li>
@@ -20,8 +24,6 @@
   <review status="Doc reviewed" notes="2010/1/18"/>
   <url>http://ros.org/wiki/driver_common</url>
   <depend stack="diagnostics" /> <!-- self_test, diagnostic_updater -->
-  <depend stack="dynamic_reconfigure" /> <!-- dynamic_reconfigure -->
-  <depend stack="ros" /> <!-- roslib -->
-  <depend stack="ros_comm" /> <!-- roscpp -->
+  <depend stack="ros" /> <!-- roslib, rospy, roscpp, rosservice -->
 
 </stack>
