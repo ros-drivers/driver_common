@@ -1,3 +1,8 @@
+find_package(PythonInterp)
+if (NOT PYTHONINTERP_FOUND)
+  message(FATAL_ERROR "could not find python interpreter")
+endif()
+
 macro(rosbuild_cfgs)
   set(_autogen "")
   foreach(_cfg ${ARGN})
@@ -34,7 +39,7 @@ macro(rosbuild_cfgs)
 
     add_custom_command(OUTPUT ${_output_cpp} ${_output_py} 
       # ${_output_dox} ${_output_usage} ${_output_py} ${_output_wikidoc}
-      COMMAND ${ROSBUILD_SUBSHELL}
+      COMMAND ${ROSBUILD_SUBSHELL} ${PYTHON_EXECUTABLE}
       ${_input}
       ${dynamic_reconfigure_SOURCE_DIR}
       ${PROJECT_BINARY_DIR}
