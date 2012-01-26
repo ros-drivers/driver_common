@@ -40,7 +40,7 @@
 #include <utility>
 #include <boost/thread.hpp>
 #include <boost/thread/condition.hpp>
-#include <roslib/Header.h>
+#include <std_msgs/Header.h>
 #include <boost/thread/thread_time.hpp>
 
 namespace timestamp_tools
@@ -190,7 +190,7 @@ public:
     triggerCallback(ros::Time(stamp));
   }
 
-  void triggerCallback(const roslib::HeaderConstPtr &msg)
+  void triggerCallback(const std_msgs::HeaderConstPtr &msg)
   {
     triggerCallback(msg->stamp);
   }
