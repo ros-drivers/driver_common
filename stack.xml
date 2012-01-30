@@ -25,5 +25,6 @@
   <url>http://ros.org/wiki/driver_common</url>
   <depend stack="diagnostics" /> <!-- self_test, diagnostic_updater -->
   <depend stack="ros" /> <!-- roslib, rospy, roscpp, rosservice -->
+  <depend stack="dynamic_reconfigure" /> 
 
 </stack>
