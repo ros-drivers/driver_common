@@ -1,9 +1,26 @@
-if(ROSBUILD)
-  include(rosbuild.cmake)
-  return()
-endif()
-cmake_minimum_required(VERSION 2.4.6)
-include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
-rosbuild_init()
-rosbuild_genmsg()
-rosbuild_gensrv()
+# http://ros.org/doc/groovy/api/catkin/html/user_guide/supposed.html
+cmake_minimum_required(VERSION 2.8.3)
+project(driver_common)
+
+# Load catkin and all dependencies required for this package
+find_package(catkin REQUIRED genmsg std_msgs)
+find_package(Boost REQUIRED)
+
+include_directories(include)
+
+add_message_files(
+  DIRECTORY msg
+  FILES
+  ConfigString.msg
+  ConfigValue.msg
+  SensorLevels.msg)
+
+generate_messages(DEPENDENCIES std_msgs)
+
+catkin_package(
+  INCLUDE_DIRS include
+  DEPENDS Boost)
+
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  FILES_MATCHING PATTERN "*.h")
