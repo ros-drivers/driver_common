@@ -1,5 +1,5 @@
 <package>
-  <name>driver_common</name>
+  <name>driver_base</name>
   <version>1.6.0</version>
   <description>A framework for writing drivers that helps with runtime reconfiguration, diagnostics and self-test.
 
