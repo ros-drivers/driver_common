@@ -8,9 +8,10 @@ find_package(Boost REQUIRED)
 
 include_directories(include)
 
-catkin_package(DEPENDS roslib roscpp
-    INCLUDE_DIRS include
-    LIBRARIES ${PROJECT_NAME})
+catkin_package(
+  DEPENDS roslib roscpp
+  INCLUDE_DIRS include
+)
 
 install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
