@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(driver_base)
 
 # Load catkin and all dependencies required for this package
-find_package(catkin REQUIRED genmsg std_msgs)
+find_package(catkin REQUIRED message_generation std_msgs)
 find_package(Boost REQUIRED)
 
 include_directories(include)
@@ -19,6 +19,7 @@ generate_messages(DEPENDENCIES std_msgs)
 
 catkin_package(
   INCLUDE_DIRS include
+  CATKIN_DEPENDS message_runtime
   DEPENDS Boost)
 
 install(DIRECTORY include/${PROJECT_NAME}/
