@@ -12,8 +12,9 @@
   <url type="bugtracker">https://github.com/ros-drivers/driver_common/issues</url>
   <url type="repository">https://github.com/ros-drivers/driver_common</url>
 
-
   <author>Blaise Gassend</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
 
   <build_depend>message_generation</build_depend>
   <build_depend>roscpp</build_depend>
