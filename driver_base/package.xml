@@ -29,9 +29,4 @@
   <run_depend>diagnostic_updater</run_depend>
   <run_depend>dynamic_reconfigure</run_depend>
   <run_depend>std_msgs</run_depend>
-
-  <test_depend>roscpp</test_depend>
-  <test_depend>self_test</test_depend>
-  <test_depend>diagnostic_updater</test_depend>
-  <test_depend>dynamic_reconfigure</test_depend>
 </package>
