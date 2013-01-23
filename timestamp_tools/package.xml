@@ -20,7 +20,4 @@
 
   <run_depend>roslib</run_depend>
   <run_depend>roscpp</run_depend>
-
-  <test_depend>roslib</test_depend>
-  <test_depend>roscpp</test_depend>
 </package>
