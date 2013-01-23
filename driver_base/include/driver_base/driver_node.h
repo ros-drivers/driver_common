@@ -50,6 +50,7 @@ namespace driver_base
 
 class AbstractDriverNode
 {
+public:
   static int ctrl_c_hit_count_; 
   
   static void hupCalled(int sig)
