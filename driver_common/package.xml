@@ -19,6 +19,8 @@
 
   <author>Blaise Gassend</author>
 
+  <buildtool_depend>catkin</buildtool_depend>
+
   <run_depend>driver_base</run_depend>
   <run_depend>timestamp_tools</run_depend>
 
