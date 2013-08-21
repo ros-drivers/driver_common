@@ -1,6 +1,6 @@
 <package>
   <name>timestamp_tools</name>
-  <version>1.6.6</version>
+  <version>1.6.7</version>
   <description>This package is currently for internal use only. Its API may change
     without warning in the future.  This package is deprecated.</description>
   <maintainer email="chadrockey@gmail.com">Chad Rockey</maintainer>
