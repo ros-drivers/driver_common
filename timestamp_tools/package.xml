@@ -20,4 +20,8 @@
 
   <run_depend>roslib</run_depend>
   <run_depend>roscpp</run_depend>
+
+  <export>
+    <architecture_independent/>
+  </export>
 </package>
