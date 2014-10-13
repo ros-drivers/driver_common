@@ -17,5 +17,8 @@ install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
   FILES_MATCHING PATTERN "*.h")
 
-catkin_add_gtest(test_trigger_matcher test/test_trigger_matcher.cpp)
-target_link_libraries(test_trigger_matcher ${catkin_LIBRARIES})
+
+if(CATKIN_ENABLE_TESTING)
+	catkin_add_gtest(test_trigger_matcher test/test_trigger_matcher.cpp)
+	target_link_libraries(test_trigger_matcher ${catkin_LIBRARIES})
+endif()
