@@ -197,7 +197,7 @@ public:
 
   void triggerCallback(const ros::Time &stamp)
   {
-    boost::mutex::scoped_lock(mutex_);
+    boost::mutex::scoped_lock lock(mutex_);
     
     trig_queue_.push(stamp + trig_delay_);
     if (trig_queue_.size() > max_trig_queue_length_)
