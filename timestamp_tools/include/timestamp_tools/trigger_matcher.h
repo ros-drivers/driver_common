@@ -266,7 +266,7 @@ public:
     if (stamp != RetryLater)
       return stamp;
 
-    got_trigger_condition_.timed_wait(lock, boost::posix_time::microseconds(timeout * 1e6));
+    got_trigger_condition_.timed_wait(lock, boost::posix_time::microseconds((int) (timeout * 1e6)));
     
     return getTimestampNoblockPrelocked(t);
   }
