@@ -6,10 +6,10 @@ project(timestamp_tools)
 find_package(catkin REQUIRED roslib roscpp)
 find_package(Boost REQUIRED)
 
-include_directories(include)
+include_directories(include ${catkin_INCLUDE_DIRS})
 
 catkin_package(
-  DEPENDS roslib roscpp
+  CATKIN_DEPENDS roslib roscpp
   INCLUDE_DIRS include
 )
 
