@@ -2,6 +2,22 @@
 Changelog for package timestamp_tools
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#11 <https://github.com/ros-drivers/driver_common/issues/11>`_ from PR2-prime/indigo-devel
+  updates for compile on focal/noetic
+* Merge pull request `#1 <https://github.com/ros-drivers/driver_common/issues/1>`_ from PR2-prime/noetic-devel
+  Noetic devel
+* Merge branch 'indigo-devel' into noetic-devel
+* fix to make tests compile under focal/noetic
+* fixed boost time duration error with doubles no longer being supported
+* fixed dependency issue in timestamp_tools
+* updated header due to boost changes in focal/noetic
+* Merge pull request `#7 <https://github.com/ros-drivers/driver_common/issues/7>`_ from AurelienBallier/indigo-devel
+  Fix CATKIN_ENABLE_TESTING set to False issue.
+* Fix CATKIN_ENABLE_TESTING set to False issue.
+* Contributors: Aurélien Ballier, Chad Rockey, Dave Feil-Seifer
+
 1.6.8 (2014-03-30)
 ------------------
 
