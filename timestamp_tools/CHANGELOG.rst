@@ -2,8 +2,8 @@
 Changelog for package timestamp_tools
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.6.9 (2021-03-22)
+------------------
 * Merge pull request `#11 <https://github.com/ros-drivers/driver_common/issues/11>`_ from PR2-prime/indigo-devel
   updates for compile on focal/noetic
 * Merge pull request `#1 <https://github.com/ros-drivers/driver_common/issues/1>`_ from PR2-prime/noetic-devel

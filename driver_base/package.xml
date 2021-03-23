@@ -1,6 +1,6 @@
 <package>
   <name>driver_base</name>
-  <version>1.6.8</version>
+  <version>1.6.9</version>
   <description>A framework for writing drivers that helps with runtime reconfiguration, diagnostics and self-test.
 
     This package is deprecated.</description>
